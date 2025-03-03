@@ -334,6 +334,12 @@ model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
 script_dir = os.path.dirname(__file__)
 DATABASE_DIR = os.path.join(script_dir, "data")
 
+# --- Cargar archivos de base de datos solo una vez al inicio ---
+@st.cache_resource
+def load_database_files_cached(directory: str) -> Dict[str, str]:
+    """Carga y cachea los archivos de la base de datos usando st.cache_resource."""
+    return discover_and_load_files(directory)
+
 def load_file_content(filepath: str) -> str:
     """Carga el contenido de un archivo, soportando .txt y .pdf."""
     try:
@@ -373,41 +379,29 @@ def discover_and_load_files(directory: str) -> Dict[str, str]:
             file_contents[filename] = load_file_content(filepath)
     return file_contents
 
+# --- ANALYZE QUERY OPTIMIZADO ---
 def analyze_query(query: str, file_contents: Dict[str, str]) -> List[str]:
-    """Analiza la consulta del usuario para determinar qué archivos son relevantes."""
+    """Analiza la consulta del usuario para determinar qué archivos son relevantes (OPTIMIZADO)."""
     relevant_files = []
 
     if "hola" in query.lower() or "saludo" in query.lower():
         return []
 
     query_keywords = [keyword.lower() for keyword in query.lower().split()]
+    preview_size = 150 # Reducir el tamaño del preview para mayor velocidad
 
     for filename, content in file_contents.items():
         filename_lower = filename.lower()
-        content_lower = content.lower()
 
-        # Prioritize filename matching (faster and often more relevant)
+        # Priorizar filename matching (más rápido y relevante)
         if any(keyword in filename_lower for keyword in query_keywords):
             relevant_files.append(filename)
             continue
 
-        # Search in the first section of the content for speed and relevance
-        # You can adjust the chunk size (e.g., first 300 words)
-        content_preview = " ".join(content_lower.split()[:300]) # Analyze only the first 300 words
+        # Analizar solo una porción inicial del contenido (preview)
+        content_preview = " ".join(content.lower().split()[:preview_size])
         if any(keyword in content_preview for keyword in query_keywords):
             relevant_files.append(filename)
-
-    # If still no relevant files, consider a broader search or return an empty list
-    if not relevant_files:
-        #Optionally: broaden search to the whole content if initial search fails (more time-consuming)
-        # for filename, content in file_contents.items():
-        #     if filename not in relevant_files: # Avoid re-adding if already found
-        #         content_lower = content.lower()
-        #         if any(keyword in content_lower for keyword in query_keywords):
-        #             relevant_files.append(filename)
-
-        # If no relevant files found even after broader search (or if broader search is skipped):
-        return [] # Or return all files as fallback: return list(file_contents.keys())
 
     return relevant_files
 
@@ -417,15 +411,15 @@ if "database_files" not in st.session_state:
 if "uploaded_files_content" not in st.session_state:
     st.session_state.uploaded_files_content = ""
 
-# --- Carga inicial de archivos ---
+# --- Carga inicial de archivos OPTIMIZADA ---
 def load_database_files_on_startup():
-    """Carga todos los archivos de la base de datos al inicio."""
-    st.session_state.database_files = discover_and_load_files(DATABASE_DIR)
+    """Carga los archivos de la base de datos al inicio usando la función cacheada."""
+    st.session_state.database_files = load_database_files_cached(DATABASE_DIR) # Usar la función cacheada
     return len(st.session_state.database_files)
 
 database_files_loaded_count = load_database_files_on_startup()
 
-# --- Prompt mejorado ---
+# --- Prompt mejorado --- (SIN CAMBIOS EN EL PROMPT, YA ESTABA OPTIMIZADO EN LA RESPUESTA ANTERIOR)
 def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, query: str) -> str:
     """Crea el prompt para el modelo, incluyendo solo la información relevante."""
     prompt_parts = [
