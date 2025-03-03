@@ -21,15 +21,15 @@ st.markdown(
     <style>
     /* --- Variables de color para fácil modificación --- */
     :root {
-        --primary-color: #003366; /* Dark Blue - Similar to website header */
-        --primary-hover-color: #0055aa; /* Lighter Blue for hover */
+        --primary-color: #004488; /* Dark Blue -  MATCHING WEBSITE HEADER BLUE */
+        --primary-hover-color: #005cb3; /* Lighter Blue for hover */
         --secondary-bg: #f9f9f9; /* Very light gray - Website background feel */
-        --text-color-primary: #333333; /* Dark Gray - Body text */
+        --text-color-primary: #444444; /* Slightly lighter Dark Gray - Body text */
         --text-color-secondary: #777777; /* Medium Gray - Secondary text */
         --accent-color: #CC0000; /* Red Accent - Similar to website red */
         --sidebar-bg: #f0f2f6; /* Light gray for sidebar background */
         --sidebar-button-hover: #e0e0e0; /* Lighter gray for sidebar button hover */
-        --sidebar-text: #333333; /* Sidebar text color - Dark gray */
+        --sidebar-text: #555555; /* Slightly lighter Sidebar text color - Dark gray */
     }
 
     body {
@@ -322,7 +322,7 @@ st.markdown('<p class="subtitle">Instituto Libertad</p>', unsafe_allow_html=True
 # --- API Key ---
 # --- WARNING: HARDCODING API KEY - FOR TESTING ONLY! ---
 # --- DO NOT HARDCODE API KEYS IN PRODUCTION. USE st.secrets! ---
-GOOGLE_API_KEY = "AIzaSyB7mSMXiy01z3w8QcD3kWWvZuYjjw5tshE"  # API Key hardcoded for testing!
+GOOGLE_API_KEY = "YOUR_API_KEY"  # Replace with your actual API key or use st.secrets
 os.environ['GOOGLE_API_KEY'] = GOOGLE_API_KEY
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
