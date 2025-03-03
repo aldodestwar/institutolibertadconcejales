@@ -21,22 +21,22 @@ st.markdown(
     <style>
     /* --- Variables de color para fácil modificación --- */
     :root {
-        --primary-color: #00838f;
-        --primary-hover-color: #00acc1;
-        --secondary-bg: #f0f0f0;
-        --text-color-primary: #333;
-        --text-color-secondary: #555;
-        --accent-color: #26a69a;
-        --sidebar-bg: #e0f7fa; /* Color de fondo de la barra lateral */
-        --sidebar-button-hover: #cce0f5; /* Color de hover de botones de la barra lateral */
-        --sidebar-text: #fff; /* Color de texto en la barra lateral */
+        --primary-color: #003366; /* Dark Blue - Similar to website header */
+        --primary-hover-color: #0055aa; /* Lighter Blue for hover */
+        --secondary-bg: #f9f9f9; /* Very light gray - Website background feel */
+        --text-color-primary: #333333; /* Dark Gray - Body text */
+        --text-color-secondary: #777777; /* Medium Gray - Secondary text */
+        --accent-color: #CC0000; /* Red Accent - Similar to website red */
+        --sidebar-bg: #f0f2f6; /* Light gray for sidebar background */
+        --sidebar-button-hover: #e0e0e0; /* Lighter gray for sidebar button hover */
+        --sidebar-text: #333333; /* Sidebar text color - Dark gray */
     }
 
     body {
-        background-color: #f8f9fa; /* Fondo ligeramente más cálido */
+        background-color: var(--secondary-bg); /* Use secondary-bg for body background */
         color: var(--text-color-primary);
         font-family: sans-serif;
-        overflow-y: scroll; /* Evita saltos de layout */
+        overflow-y: scroll;
         opacity: 0;
         animation: fadeIn 0.5s ease-in-out forwards;
     }
@@ -51,7 +51,7 @@ st.markdown(
         font-size: 2.7em;
         font-weight: bold;
         margin-bottom: 0.1em;
-        color: white; /* Texto del título en blanco */
+        color: var(--primary-color); /* Use primary-color for main title */
         text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
         transition: transform 0.3s ease-in-out;
     }
@@ -62,10 +62,10 @@ st.markdown(
     /* --- Subtítulo con ligera demora en la animación --- */
     .subtitle {
         font-size: 1.2em;
-        color: white; /* Texto del subtítulo en blanco */
+        color: var(--text-color-secondary); /* Use text-color-secondary for subtitle */
         margin-bottom: 1.2em;
         opacity: 0;
-        animation: slideUp 0.6s ease-out 0.2s forwards; /* Demora de 0.2s */
+        animation: slideUp 0.6s ease-out 0.2s forwards;
     }
 
     @keyframes slideUp {
@@ -75,7 +75,7 @@ st.markdown(
 
     /* --- Barra lateral --- */
     .sidebar .sidebar-content {
-        background-color: var(--sidebar-bg); /* Fondo azul claro */
+        background-color: var(--sidebar-bg); /* Light gray sidebar background */
         padding: 1rem;
     }
 
@@ -83,7 +83,7 @@ st.markdown(
     .stChatContainer {
         border-radius: 0.7em;
         overflow: hidden;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.05); /* Sombra más definida */
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
         transition: box-shadow 0.3s ease;
     }
     .stChatContainer:hover {
@@ -97,35 +97,35 @@ st.markdown(
         margin-bottom: 1.2rem;
         font-size: 1rem;
         line-height: 1.5;
-        width: fit-content; /* Ajuste para el ancho */
+        width: fit-content;
         max-width: 80%;
         display: flex;
         flex-direction: column;
         transform: translateY(10px);
         opacity: 0;
         animation: fadeInUp 0.3s ease-out forwards;
-        overflow-wrap: break-word; /* Asegura que las palabras largas se rompan */
+        overflow-wrap: break-word;
     }
 
     @keyframes fadeInUp {
         to { opacity: 1; transform: translateY(0); }
-        from { opacity: 0; transform: translateY(10px); } /* Asegura que la animación comience desde abajo */
+        from { opacity: 0; transform: translateY(10px); }
     }
 
 
     .user-message {
-        background-color: #e0f7fa;
-        color: #004d40;
+        background-color: #e6e6e6; /* Lighter gray for user messages */
+        color: var(--text-color-primary);
         align-self: flex-end;
         border-left: 4px solid var(--accent-color);
         box-shadow: 1px 1px 3px rgba(0,0,0,0.05);
     }
 
     .assistant-message {
-        background-color: var(--secondary-bg);
+        background-color: white; /* White for assistant messages */
         color: var(--text-color-primary);
         align-self: flex-start;
-        border-left: 4px solid #aaa;
+        border-left: 4px solid #cccccc; /* Light gray border */
         box-shadow: 1px 1px 3px rgba(0,0,0,0.08);
         transition: box-shadow 0.3s ease;
     }
@@ -139,14 +139,14 @@ st.markdown(
 
     /* --- Campo de Entrada de Texto (Bordes suaves y foco animado) --- */
     .stTextInput > div > div > div > input {
-        border: 1.5px solid #ccc;
+        border: 1.5px solid #cccccc; /* Light gray input border */
         border-radius: 0.5em;
         padding: 0.7em 1em;
         transition: border-color 0.3s ease, box-shadow 0.3s ease;
     }
     .stTextInput > div > div > div > input:focus {
         border-color: var(--primary-color);
-        box-shadow: 0 0 5px rgba(var(--primary-color-rgb), 0.5); /* Necesitarías definir --primary-color-rgb */
+        box-shadow: 0 0 5px rgba(var(--primary-color-rgb), 0.5); /* Needs --primary-color-rgb definition if used */
         outline: none;
     }
 
@@ -158,7 +158,7 @@ st.markdown(
         border-radius: 0.5em;
         padding: 0.7em 1.5em;
         font-weight: 500;
-        text-transform: none; /* Sin mayúsculas forzadas */
+        text-transform: none;
         letter-spacing: 0.03em;
         cursor: pointer;
         position: relative;
@@ -173,7 +173,7 @@ st.markdown(
     }
     .stButton > button:focus {
         outline: none;
-        box-shadow: 0 0 0 2px rgba(0, 131, 143, 0.4);
+        box-shadow: 0 0 0 2px rgba(0, 131, 143, 0.4); /* Original color, adjust if needed */
     }
     .stButton > button::before {
         content: '';
@@ -196,7 +196,7 @@ st.markdown(
 
     /* --- Contenedor del Logo en la Barra Lateral (Animación sutil) --- */
     .sidebar-logo-container {
-        width: 120px; /* Ligeramente más pequeño */
+        width: 120px;
         height: 120px;
         border-radius: 50%;
         overflow: hidden;
@@ -204,7 +204,7 @@ st.markdown(
         background-size: cover;
         background-position: center;
         margin-bottom: 1.2em;
-        transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1); /* Curva de animación más suave */
+        transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
     }
     .sidebar-logo-container:hover {
         transform: rotate(5deg) scale(1.05);
@@ -215,13 +215,13 @@ st.markdown(
         font-weight: bold;
         margin-bottom: 0.6em;
         color: var(--text-color-primary);
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid #dddddd; /* Lighter border */
         padding-bottom: 0.4em;
     }
 
     /* --- Botones de la Barra Lateral (Más sutiles) --- */
     .sidebar .stButton > button {
-        background-color: transparent; /* Fondo transparente */
+        background-color: transparent;
         color: var(--text-color-primary);
         border-radius: 0.4em;
         padding: 0.4em 0.8em;
@@ -231,16 +231,16 @@ st.markdown(
         transition: background-color 0.3s ease-in-out, transform 0.2s ease-out;
     }
     .sidebar .stButton > button:hover {
-        background-color: var(--sidebar-button-hover); /* Color de fondo al hacer hover */
+        background-color: var(--sidebar-button-hover);
         transform: translateX(1px);
     }
     .sidebar .stButton > button:focus {
-        background-color: rgba(0, 131, 143, 0.1);
+        background-color: rgba(0, 131, 143, 0.1); /* Original color, adjust if needed */
     }
 
     /* --- Separadores más ligeros --- */
     hr {
-        border-top: 1px solid #eee;
+        border-top: 1px solid #dddddd; /* Lighter hr color */
         margin: 1em 0;
     }
 
@@ -278,11 +278,11 @@ st.markdown(
         font-size: 0.7em;
         padding: 0.3em 0.6em;
         border-radius: 0.3em;
-        background-color: rgba(0, 131, 143, 0.1);
+        background-color: rgba(0, 131, 143, 0.1); /* Original color, adjust if needed */
         color: var(--primary-color);
     }
     .sidebar .stButton > button:nth-child(3):hover {
-        background-color: rgba(0, 131, 143, 0.2);
+        background-color: rgba(0, 131, 143, 0.2); /* Original color, adjust if needed */
     }
 
     /* --- Animación de "escribiendo..." del asistente --- */
