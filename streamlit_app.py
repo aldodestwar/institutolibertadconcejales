@@ -6,15 +6,6 @@ import requests
 from io import BytesIO
 from pathlib import Path
 from typing import List, Dict
-import nltk  # Import nltk for text processing (keyword extraction)
-nltk.data.path.append("./nltk_data")  # ¡IMPORTANTE! Añadir path al inicio
-
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-
-# Download necessary NLTK data (run once)
-nltk.download('stopwords', quiet=True)
-nltk.download('punkt', quiet=True)
 
 # --- Configuración de la página ---
 st.set_page_config(
@@ -28,7 +19,7 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* ... (CSS styles - No changes needed, already optimized for UI) ... */
+    /* --- Variables de color para fácil modificación --- */
     :root {
         --primary-color: #00838f;
         --primary-hover-color: #00acc1;
@@ -342,13 +333,23 @@ model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
 script_dir = os.path.dirname(__file__)
 DATABASE_DIR = os.path.join(script_dir, "data")
 
-# --- Cargar archivos de base de datos y crear índice ---
-@st.cache_resource
-def load_database_and_create_index_cached(directory: str) -> Dict[str, str]:
-    """Carga archivos y crea un índice de keywords para búsqueda rápida."""
-    file_contents = discover_and_load_files(directory)
-    file_index = create_keyword_index(file_contents)
-    return {"file_contents": file_contents, "file_index": file_index}
+@st.cache_data(show_spinner=False, persist="disk") # Caching to load files only once
+def load_database_files_cached(directory: str) -> Dict[str, str]:
+    """Carga y cachea el contenido de todos los archivos .txt en el directorio."""
+    file_contents = {}
+    if not os.path.exists(directory):
+        st.warning(f"Directorio de base de datos no encontrado: {directory}")
+        return file_contents
+
+    for filename in os.listdir(directory):
+        if filename.endswith(".txt"):
+            filepath = os.path.join(directory, filename)
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    file_contents[filename] = f.read()
+            except Exception as e:
+                st.error(f"Error al leer el archivo {filename}: {e}")
+    return file_contents
 
 def load_file_content(filepath: str) -> str:
     """Carga el contenido de un archivo .txt."""
@@ -357,7 +358,7 @@ def load_file_content(filepath: str) -> str:
             with open(filepath, "r", encoding="utf-8") as f:
                 return f.read()
         else:
-            st.error(f"Tipo de archivo no soportado: {filepath}. Solo se soporta .txt")
+            st.error(f"Tipo de archivo no soportado: {filepath}")
             return ""
     except Exception as e:
         st.error(f"Error al leer el archivo {filepath}: {e}")
@@ -369,70 +370,75 @@ def get_file_description(filename: str) -> str:
     return " ".join(word.capitalize() for word in name_parts)
 
 def discover_and_load_files(directory: str) -> Dict[str, str]:
-    """Descubre y carga todos los archivos .txt en un directorio."""
+    """Descubre y carga todos los archivos .txt en un directorio.""" # Updated description
     file_contents = {}
     if not os.path.exists(directory):
         st.warning(f"Directorio de base de datos no encontrado: {directory}")
         return file_contents
 
     for filename in os.listdir(directory):
-        if filename.endswith(".txt"):
+        if filename.endswith(".txt"): # Only process .txt files
             filepath = os.path.join(directory, filename)
             file_contents[filename] = load_file_content(filepath)
     return file_contents
 
-def create_keyword_index(file_contents: Dict[str, str]) -> Dict[str, List[str]]:
-    """Crea un índice de keywords para búsqueda rápida en los documentos."""
-    index = {}
-    stop_words = set(stopwords.words('spanish')) # Using Spanish stopwords
-    for filename, content in file_contents.items():
-        tokens = word_tokenize(content.lower())
-        keywords = [w for w in tokens if not w in stop_words and w.isalnum()] # Remove stopwords and punctuation
-        index[filename] = keywords
-    return index
-
-# --- ANALYZE QUERY OPTIMIZADO usando índice ---
-def analyze_query(query: str, database_data: Dict) -> List[str]:
-    """Analiza la consulta del usuario usando el índice de keywords (OPTIMIZADO)."""
+def analyze_query(query: str, file_contents: Dict[str, str]) -> List[str]:
+    """
+    Analiza la consulta del usuario para determinar qué archivos son relevantes.
+    Prioriza la búsqueda por frases exactas en el nombre del archivo y las primeras líneas del contenido.
+    """
     relevant_files = []
-    if not database_data or not database_data["file_index"]: # Check if index is available
-        return []
 
     if "hola" in query.lower() or "saludo" in query.lower():
         return []
 
-    query_keywords = [keyword.lower() for keyword in query.lower().split()]
+    query_lower = query.lower()
+    query_keywords = [keyword.lower() for keyword in query_lower.split()]
 
-    for filename, keywords in database_data["file_index"].items(): # Iterate over keywords in index
+    for filename, content in file_contents.items():
         filename_lower = filename.lower()
+        content_lower = content.lower()
 
-        # Priorizar filename matching (más rápido y relevante)
-        if any(keyword in filename_lower for keyword in query_keywords):
+        # Prioritize exact phrase matching in filename
+        if query_lower in filename_lower:
             relevant_files.append(filename)
             continue
 
-        # Buscar keywords en el índice en lugar del contenido completo
-        if any(keyword in keywords for keyword in query_keywords):
+        # Search for exact phrases in the first part of the content (e.g., first 5 paragraphs or 500 words)
+        # More focused and efficient than searching the entire content initially
+        content_preview = " ".join(content_lower.split()[:500]) # Analyze first 500 words
+        if query_lower in content_preview:
             relevant_files.append(filename)
+            continue
+
+        # Broader keyword search in filename (if exact phrase not found)
+        if any(keyword in filename_lower for keyword in query_keywords) and filename not in relevant_files:
+            relevant_files.append(filename)
+            continue
+
+        # Broader keyword search in the first part of the content (if exact phrase and filename keyword not found)
+        if any(keyword in content_preview for keyword in query_keywords) and filename not in relevant_files:
+             relevant_files.append(filename)
+             continue
 
     return relevant_files
 
 # --- Inicializar el estado para los archivos ---
-if "database_data" not in st.session_state:
-    st.session_state.database_data = {}
+if "database_files" not in st.session_state:
+    st.session_state.database_files = {}
 if "uploaded_files_content" not in st.session_state:
     st.session_state.uploaded_files_content = ""
 
-# --- Carga inicial de archivos y creación de índice OPTIMIZADA ---
-def load_database_on_startup():
-    """Carga la base de datos y crea el índice al inicio usando la función cacheada."""
-    st.session_state.database_data = load_database_and_create_index_cached(DATABASE_DIR)
-    return len(st.session_state.database_data.get("file_contents", {}))
+# --- Carga inicial de archivos ---
+def load_database_files_on_startup():
+    """Carga todos los archivos de la base de datos al inicio."""
+    if not st.session_state.database_files: # Load only once at startup
+        st.session_state.database_files = load_database_files_cached(DATABASE_DIR) # Use cached function
+    return len(st.session_state.database_files)
 
-database_files_loaded_count = load_database_on_startup()
+database_files_loaded_count = load_database_files_on_startup()
 
-
-# --- Prompt mejorado --- (SIN CAMBIOS EN EL PROMPT, YA ESTABA OPTIMIZADO EN LA RESPUESTA ANTERIOR)
+# --- Prompt mejorado ---
 def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, query: str) -> str:
     """Crea el prompt para el modelo, incluyendo solo la información relevante."""
     prompt_parts = [
@@ -456,7 +462,7 @@ def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, qu
 *   **Si la pregunta se relaciona con la base de datos:** Utiliza la información de la base de datos como tu principal fuente para responder. **Siempre cita el artículo, sección o norma específica de la base de datos que justifica tu respuesta. Indica claramente en tu respuesta que estás utilizando información de la base de datos y el documento específico.**  Menciona el nombre del documento y la parte pertinente (ej. "Artículo 25 del Reglamento del Concejo Municipal").
 *   **Si la pregunta se relaciona con la información adicional proporcionada:** Utiliza esa información como tu principal fuente. **Siempre cita la parte específica de la información adicional que justifica tu respuesta (ej. "Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt'"). Indica claramente en tu respuesta que estás utilizando información proporcionada por el usuario y el documento específico.**
 *   **Si la pregunta es sobre otros aspectos del derecho municipal chileno:** Utiliza tu conocimiento general en la materia. **Siempre cita la norma legal general del derecho municipal chileno que justifica tu respuesta (ej. "Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades"). Indica claramente en tu respuesta que estás utilizando tu conocimiento general de derecho municipal chileno y la norma general.**
-""")
+    """)
     prompt_parts.append("Esta es una herramienta creada por y para el Instituto Libertad por Aldo Manuel Herrera Hernández.")
     prompt_parts.append("**Metodología LegalDesign:**")
     prompt_parts.append("""
@@ -465,7 +471,7 @@ def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, qu
 *   **Visualizaciones (si es posible):** Aunque textual, piensa en cómo la información podría representarse visualmente para mejorar la comprensión (por ejemplo, un flujo de proceso mentalmente).
 *   **Ejemplos:**  Si es pertinente, incluye ejemplos prácticos y sencillos para ilustrar los conceptos legales.
 *   **Lenguaje sencillo:** Utiliza un lenguaje accesible para personas sin formación legal especializada, pero manteniendo la precisión legal.
-""")
+    """)
     prompt_parts.append("**Instrucciones específicas:**")
     prompt_parts.append("""
 *   Comienza tus respuestas **respondiendo directamente a la pregunta del usuario en una frase inicial.**
@@ -477,7 +483,7 @@ def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, qu
 *   **Si la información para responder la pregunta no se encuentra en la información adicional proporcionada, responde de forma concisa: "Según la información adicional proporcionada, no puedo responder a esta pregunta."**
 *   **Si la información para responder la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
 *   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS.**
-""")
+    """)
     prompt_parts.append("**Ejemplos de respuestas esperadas (con citación):**")
     prompt_parts.append("""
 *   **Pregunta del Usuario:** "¿Cuáles son las funciones del concejo municipal?"
@@ -486,7 +492,7 @@ def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, qu
     *   **Respuesta Esperada:** "El artículo 25 del Reglamento del Concejo Municipal establece los plazos y formalidades para las citaciones a sesiones ordinarias y extraordinarias (Artículo 25 del Reglamento del Concejo Municipal)."
 *   **Pregunta del Usuario:** (Adjunta un archivo con jurisprudencia sobre transparencia municipal) "¿Cómo se aplica esta jurisprudencia en el concejo?"
     *   **Respuesta Esperada:** "La jurisprudencia adjunta en 'Sentencia_Rol_1234-2023.txt' establece criterios sobre la publicidad de las sesiones del concejo y el acceso a la información pública municipal, que deben ser considerados para asegurar la transparencia en las actuaciones del concejo (Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt')."
-""")
+    """)
     prompt_parts.append("**Historial de conversación:**")
 
     # Añadir historial de conversación
@@ -537,12 +543,12 @@ with st.sidebar:
     st.header("Historial de Conversaciones")
 
     st.subheader("Cargar Datos Adicionales")
-    uploaded_files = st.file_uploader("Adjuntar archivos adicionales (.txt)", type=["txt"], help="Puedes adjuntar archivos .txt adicionales para que sean considerados en la respuesta.", accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Adjuntar archivos adicionales (.txt)", type=["txt"], help="Puedes adjuntar archivos .txt adicionales para que sean considerados en la respuesta.", accept_multiple_files=True) # Updated to only accept .txt
     if uploaded_files:
         st.session_state.uploaded_files_content = ""
         for uploaded_file in uploaded_files:
             try:
-                content = load_file_content(uploaded_file.name) # Pass filename to load_file_content
+                content = load_file_content(uploaded_file.name) # Pass filename for correct reading
                 st.session_state.uploaded_files_content += content + "\n\n"
             except Exception as e:
                 st.error(f"Error al leer el archivo adjunto {uploaded_file.name}: {e}")
@@ -605,16 +611,16 @@ with st.sidebar:
     st.markdown("[Contacto](mailto:contacto@institutolibertad.cl)")
 
     st.subheader("Datos Cargados")
-    if st.session_state.database_data.get("file_contents"): # Check if file_contents exists
+    if st.session_state.database_files:
         st.markdown(f"**Base de Datos:** Se ha cargado información desde {database_files_loaded_count} archivo(s) automáticamente.")
     if st.session_state.uploaded_files_content:
         uploaded_file_count = 0
         if uploaded_files: # Check if uploaded_files is defined to avoid errors on initial load
             uploaded_file_count = len(uploaded_files)
         st.markdown(f"**Archivos Adicionales:** Se ha cargado información desde {uploaded_file_count} archivo(s).") # Updated description to remove PDF
-    if not st.session_state.database_data.get("file_contents") and not st.session_state.uploaded_files_content:
+    if not st.session_state.database_files and not st.session_state.uploaded_files_content:
         st.warning("No se ha cargado ninguna base de datos del reglamento ni archivos adicionales.")
-    elif not st.session_state.database_data.get("file_contents"):
+    elif not st.session_state.database_files:
         st.warning("No se ha encontrado o cargado la base de datos del reglamento automáticamente.")
 
 # --- Área de chat ---
@@ -636,8 +642,8 @@ if prompt := st.chat_input("Escribe tu consulta sobre derecho municipal chileno.
     # Process query and generate assistant response in a separate container
     with st.container(): # New container for processing and assistant response
         # Analizar la consulta y cargar archivos relevantes
-        relevant_filenames = analyze_query(prompt, st.session_state.database_data) # Pass the entire database_data dict
-        relevant_database_data = {filename: st.session_state.database_data["file_contents"][filename] for filename in relevant_filenames}
+        relevant_filenames = analyze_query(prompt, st.session_state.database_files)
+        relevant_database_data = {filename: st.session_state.database_files[filename] for filename in relevant_filenames}
 
         # Construir el prompt completo
         prompt_completo = create_prompt(relevant_database_data, st.session_state.uploaded_files_content, prompt)
