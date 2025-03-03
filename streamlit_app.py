@@ -662,8 +662,20 @@ if prompt := st.chat_input("Escribe tu consulta sobre derecho municipal chileno.
                     message_placeholder.markdown(full_response + "▌")
                     time.sleep(0.015)  # Ligeramente más rápido
                 if not response.candidates: # Check if candidates is empty AFTER stream completion
-                    full_response = "Lo siento, no pude generar una respuesta adecuada para tu pregunta.  Puede que la pregunta sea demasiado compleja, o que no tenga suficiente información para responderla correctamente. Por favor, intenta reformular tu pregunta o consulta fuentes legales adicionales."
-                    st.error("No se pudo generar una respuesta válida. La consulta podría ser demasiado compleja o no hay información suficiente.", icon="⚠️")
+                    full_response = """
+                    Lo siento, no pude generar una respuesta adecuada para tu pregunta con la información disponible.
+                    **Posibles razones:**
+                    * La pregunta podría ser demasiado compleja o específica.
+                    * La información necesaria para responder podría no estar en la base de datos actual o en los archivos adjuntos.
+                    * Limitaciones del modelo de IA.
+
+                    **¿Qué puedes intentar?**
+                    * **Reformula tu pregunta:**  Intenta hacerla más simple o más directa.
+                    * **Proporciona más detalles:**  Añade contexto o información clave a tu pregunta.
+                    * **Carga archivos adicionales:**  Si tienes documentos relevantes, adjúntalos para ampliar la base de conocimiento.
+                    * **Consulta fuentes legales adicionales:**  Esta herramienta es un apoyo, pero no reemplaza el asesoramiento de un abogado especializado.
+                    """
+                    st.error("No se pudo generar una respuesta válida. Consulta la sección de ayuda en el mensaje del asistente.", icon="⚠️")
 
                 typing_placeholder.empty()  # Eliminar "escribiendo..." al finalizar
                 is_typing = False
@@ -673,7 +685,7 @@ if prompt := st.chat_input("Escribe tu consulta sobre derecho municipal chileno.
             except Exception as e:
                 typing_placeholder.empty()
                 is_typing = False
-                st.error(f"Ocurrió un error al generar la respuesta: {e}", icon="🚨") # More prominent error icon
+                st.error(f"Ocurrió un error inesperado al generar la respuesta: {e}. Por favor, intenta de nuevo más tarde.", icon="🚨") # More prominent error icon
                 full_response = f"Ocurrió un error inesperado: {e}. Por favor, intenta de nuevo más tarde."
 
             st.session_state.messages.append({"role": "assistant", "content": full_response})
