@@ -7,6 +7,8 @@ from io import BytesIO
 from pathlib import Path
 from typing import List, Dict
 import nltk  # Import nltk for text processing (keyword extraction)
+nltk.data.path.append("./nltk_data")  # ¡IMPORTANTE! Añadir path al inicio
+
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 
