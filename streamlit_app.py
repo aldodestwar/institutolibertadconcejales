@@ -6,7 +6,13 @@ import requests
 from io import BytesIO
 from pathlib import Path
 from typing import List, Dict
-import PyPDF2  # Import PyPDF2 for PDF processing
+import nltk  # Import nltk for text processing (keyword extraction)
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+
+# Download necessary NLTK data (run once)
+nltk.download('stopwords', quiet=True)
+nltk.download('punkt', quiet=True)
 
 # --- Configuración de la página ---
 st.set_page_config(
@@ -20,7 +26,7 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* --- Variables de color para fácil modificación --- */
+    /* ... (CSS styles - No changes needed, already optimized for UI) ... */
     :root {
         --primary-color: #00838f;
         --primary-hover-color: #00acc1;
@@ -334,28 +340,22 @@ model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
 script_dir = os.path.dirname(__file__)
 DATABASE_DIR = os.path.join(script_dir, "data")
 
-# --- Cargar archivos de base de datos solo una vez al inicio ---
+# --- Cargar archivos de base de datos y crear índice ---
 @st.cache_resource
-def load_database_files_cached(directory: str) -> Dict[str, str]:
-    """Carga y cachea los archivos de la base de datos usando st.cache_resource."""
-    return discover_and_load_files(directory)
+def load_database_and_create_index_cached(directory: str) -> Dict[str, str]:
+    """Carga archivos y crea un índice de keywords para búsqueda rápida."""
+    file_contents = discover_and_load_files(directory)
+    file_index = create_keyword_index(file_contents)
+    return {"file_contents": file_contents, "file_index": file_index}
 
 def load_file_content(filepath: str) -> str:
-    """Carga el contenido de un archivo, soportando .txt y .pdf."""
+    """Carga el contenido de un archivo .txt."""
     try:
         if filepath.lower().endswith(".txt"):
             with open(filepath, "r", encoding="utf-8") as f:
                 return f.read()
-        elif filepath.lower().endswith(".pdf"):
-            text_content = ""
-            with open(filepath, "rb") as pdf_file:
-                pdf_reader = PyPDF2.PdfReader(pdf_file)
-                for page_num in range(len(pdf_reader.pages)):
-                    page = pdf_reader.pages[page_num]
-                    text_content += page.extract_text()
-            return text_content
         else:
-            st.error(f"Tipo de archivo no soportado: {filepath}")
+            st.error(f"Tipo de archivo no soportado: {filepath}. Solo se soporta .txt")
             return ""
     except Exception as e:
         st.error(f"Error al leer el archivo {filepath}: {e}")
@@ -363,34 +363,45 @@ def load_file_content(filepath: str) -> str:
 
 def get_file_description(filename: str) -> str:
     """Genera una descripción genérica para un archivo basado en su nombre."""
-    name_parts = filename.replace(".txt", "").replace(".pdf", "").split("_")
+    name_parts = filename.replace(".txt", "").split("_")
     return " ".join(word.capitalize() for word in name_parts)
 
 def discover_and_load_files(directory: str) -> Dict[str, str]:
-    """Descubre y carga todos los archivos .txt y .pdf en un directorio."""
+    """Descubre y carga todos los archivos .txt en un directorio."""
     file_contents = {}
     if not os.path.exists(directory):
         st.warning(f"Directorio de base de datos no encontrado: {directory}")
         return file_contents
 
     for filename in os.listdir(directory):
-        if filename.endswith((".txt", ".pdf")): # Support both .txt and .pdf
+        if filename.endswith(".txt"):
             filepath = os.path.join(directory, filename)
             file_contents[filename] = load_file_content(filepath)
     return file_contents
 
-# --- ANALYZE QUERY OPTIMIZADO ---
-def analyze_query(query: str, file_contents: Dict[str, str]) -> List[str]:
-    """Analiza la consulta del usuario para determinar qué archivos son relevantes (OPTIMIZADO)."""
+def create_keyword_index(file_contents: Dict[str, str]) -> Dict[str, List[str]]:
+    """Crea un índice de keywords para búsqueda rápida en los documentos."""
+    index = {}
+    stop_words = set(stopwords.words('spanish')) # Using Spanish stopwords
+    for filename, content in file_contents.items():
+        tokens = word_tokenize(content.lower())
+        keywords = [w for w in tokens if not w in stop_words and w.isalnum()] # Remove stopwords and punctuation
+        index[filename] = keywords
+    return index
+
+# --- ANALYZE QUERY OPTIMIZADO usando índice ---
+def analyze_query(query: str, database_data: Dict) -> List[str]:
+    """Analiza la consulta del usuario usando el índice de keywords (OPTIMIZADO)."""
     relevant_files = []
+    if not database_data or not database_data["file_index"]: # Check if index is available
+        return []
 
     if "hola" in query.lower() or "saludo" in query.lower():
         return []
 
     query_keywords = [keyword.lower() for keyword in query.lower().split()]
-    preview_size = 150 # Reducir el tamaño del preview para mayor velocidad
 
-    for filename, content in file_contents.items():
+    for filename, keywords in database_data["file_index"].items(): # Iterate over keywords in index
         filename_lower = filename.lower()
 
         # Priorizar filename matching (más rápido y relevante)
@@ -398,26 +409,26 @@ def analyze_query(query: str, file_contents: Dict[str, str]) -> List[str]:
             relevant_files.append(filename)
             continue
 
-        # Analizar solo una porción inicial del contenido (preview)
-        content_preview = " ".join(content.lower().split()[:preview_size])
-        if any(keyword in content_preview for keyword in query_keywords):
+        # Buscar keywords en el índice en lugar del contenido completo
+        if any(keyword in keywords for keyword in query_keywords):
             relevant_files.append(filename)
 
     return relevant_files
 
 # --- Inicializar el estado para los archivos ---
-if "database_files" not in st.session_state:
-    st.session_state.database_files = {}
+if "database_data" not in st.session_state:
+    st.session_state.database_data = {}
 if "uploaded_files_content" not in st.session_state:
     st.session_state.uploaded_files_content = ""
 
-# --- Carga inicial de archivos OPTIMIZADA ---
-def load_database_files_on_startup():
-    """Carga los archivos de la base de datos al inicio usando la función cacheada."""
-    st.session_state.database_files = load_database_files_cached(DATABASE_DIR) # Usar la función cacheada
-    return len(st.session_state.database_files)
+# --- Carga inicial de archivos y creación de índice OPTIMIZADA ---
+def load_database_on_startup():
+    """Carga la base de datos y crea el índice al inicio usando la función cacheada."""
+    st.session_state.database_data = load_database_and_create_index_cached(DATABASE_DIR)
+    return len(st.session_state.database_data.get("file_contents", {}))
 
-database_files_loaded_count = load_database_files_on_startup()
+database_files_loaded_count = load_database_on_startup()
+
 
 # --- Prompt mejorado --- (SIN CAMBIOS EN EL PROMPT, YA ESTABA OPTIMIZADO EN LA RESPUESTA ANTERIOR)
 def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, query: str) -> str:
@@ -524,12 +535,12 @@ with st.sidebar:
     st.header("Historial de Conversaciones")
 
     st.subheader("Cargar Datos Adicionales")
-    uploaded_files = st.file_uploader("Adjuntar archivos adicionales (.txt, .pdf)", type=["txt", "pdf"], help="Puedes adjuntar archivos .txt y .pdf adicionales para que sean considerados en la respuesta.", accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Adjuntar archivos adicionales (.txt)", type=["txt"], help="Puedes adjuntar archivos .txt adicionales para que sean considerados en la respuesta.", accept_multiple_files=True)
     if uploaded_files:
         st.session_state.uploaded_files_content = ""
         for uploaded_file in uploaded_files:
             try:
-                content = load_file_content(uploaded_file)
+                content = load_file_content(uploaded_file.name) # Pass filename to load_file_content
                 st.session_state.uploaded_files_content += content + "\n\n"
             except Exception as e:
                 st.error(f"Error al leer el archivo adjunto {uploaded_file.name}: {e}")
@@ -585,23 +596,23 @@ with st.sidebar:
     st.header("Acerca de")
     st.markdown("Este asesor legal virtual fue creado por Aldo Manuel Herrera Hernández para el **Instituto Libertad** y se especializa en asesoramiento en derecho administrativo y municipal de **Chile**, basándose en la información que le proporciones.")
     st.markdown("Esta herramienta es desarrollada por el **Instituto Libertad**.")
-    st.markdown("La información proporcionada aquí se basa en el contenido de los archivos .txt y .pdf que cargues como base de datos del reglamento y los archivos adicionales que adjuntes, y no reemplaza el asesoramiento legal profesional.") # Updated description to include PDF
+    st.markdown("La información proporcionada aquí se basa en el contenido de los archivos .txt que cargues como base de datos del reglamento y los archivos adicionales que adjuntes, y no reemplaza el asesoramiento legal profesional.") # Updated description to remove PDF
     st.markdown("---")
     st.markdown("**Instituto Libertad**")
     st.markdown("[Sitio Web](https://www.institutolibertad.cl)")
     st.markdown("[Contacto](mailto:contacto@institutolibertad.cl)")
 
     st.subheader("Datos Cargados")
-    if st.session_state.database_files:
+    if st.session_state.database_data.get("file_contents"): # Check if file_contents exists
         st.markdown(f"**Base de Datos:** Se ha cargado información desde {database_files_loaded_count} archivo(s) automáticamente.")
     if st.session_state.uploaded_files_content:
         uploaded_file_count = 0
         if uploaded_files: # Check if uploaded_files is defined to avoid errors on initial load
             uploaded_file_count = len(uploaded_files)
-        st.markdown(f"**Archivos Adicionales:** Se ha cargado información desde {uploaded_file_count} archivo(s).") # Updated description to include PDF
-    if not st.session_state.database_files and not st.session_state.uploaded_files_content:
+        st.markdown(f"**Archivos Adicionales:** Se ha cargado información desde {uploaded_file_count} archivo(s).") # Updated description to remove PDF
+    if not st.session_state.database_data.get("file_contents") and not st.session_state.uploaded_files_content:
         st.warning("No se ha cargado ninguna base de datos del reglamento ni archivos adicionales.")
-    elif not st.session_state.database_files:
+    elif not st.session_state.database_data.get("file_contents"):
         st.warning("No se ha encontrado o cargado la base de datos del reglamento automáticamente.")
 
 # --- Área de chat ---
@@ -623,8 +634,8 @@ if prompt := st.chat_input("Escribe tu consulta sobre derecho municipal chileno.
     # Process query and generate assistant response in a separate container
     with st.container(): # New container for processing and assistant response
         # Analizar la consulta y cargar archivos relevantes
-        relevant_filenames = analyze_query(prompt, st.session_state.database_files)
-        relevant_database_data = {filename: st.session_state.database_files[filename] for filename in relevant_filenames}
+        relevant_filenames = analyze_query(prompt, st.session_state.database_data) # Pass the entire database_data dict
+        relevant_database_data = {filename: st.session_state.database_data["file_contents"][filename] for filename in relevant_filenames}
 
         # Construir el prompt completo
         prompt_completo = create_prompt(relevant_database_data, st.session_state.uploaded_files_content, prompt)
