@@ -320,10 +320,7 @@ st.markdown('<h1 class="main-title">Asesor Legal Municipal Virtual</h1>', unsafe
 st.markdown('<p class="subtitle">Instituto Libertad</p>', unsafe_allow_html=True)
 
 # --- API Key ---
-# --- WARNING: HARDCODING API KEY - FOR TESTING ONLY! ---
-# --- DO NOT HARDCODE API KEYS IN PRODUCTION. USE st.secrets! ---
-GOOGLE_API_KEY = "AIzaSyB7mSMXiy01z3w8QcD3kWWvZuYjjw5tshE"  # Replace with your actual API key or use st.secrets
-os.environ['GOOGLE_API_KEY'] = GOOGLE_API_KEY
+GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"] # Access API key from st.secrets
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
 
