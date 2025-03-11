@@ -3,8 +3,3 @@ base="dark"
 primaryColor="#ff2323"
 backgroundColor="#002160"
 secondaryBackgroundColor="#00379a"
-
-base="light"
-backgroundColor="#fbf9ff"
-secondaryBackgroundColor="#edf8ff"
-textColor="#000000"
