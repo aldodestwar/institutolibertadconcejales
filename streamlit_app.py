@@ -8,6 +8,57 @@ from pathlib import Path
 from typing import List, Dict
 import hashlib
 
+# --- Password and Disclaimer State ---
+if "authentication_successful" not in st.session_state:
+    st.session_state.authentication_successful = False
+if "disclaimer_accepted" not in st.session_state:
+    st.session_state.disclaimer_accepted = False
+if "password_input" not in st.session_state:
+    st.session_state.password_input = "" # Initialize password input
+
+# --- Initial Screen (Password and Disclaimer - Single Step) ---
+if not st.session_state.disclaimer_accepted:
+    initial_screen_placeholder = st.empty()
+    with initial_screen_placeholder.container():
+        st.title("Acceso al Asesor Legal Municipal Virtual")
+        password = st.text_input("Ingrese la clave de usuario", type="password", value=st.session_state.password_input) # Persist input
+
+        if st.button("Verificar Clave"): # Button for verification
+            if password.lower() == "ilconcejales":
+                st.session_state.authentication_successful = True
+            else:
+                st.session_state.authentication_successful = False
+                st.error("Clave incorrecta. Intente nuevamente.")
+
+        if st.session_state.authentication_successful: # Show disclaimer only after correct password
+            st.markdown("---") # Separator
+            with st.expander("Descargo de Responsabilidad (Leer antes de usar la IA)", expanded=False):
+                st.markdown("""
+                **Descargo de Responsabilidad Completo:**
+
+                Este Asesor Legal Municipal Virtual es una herramienta de inteligencia artificial en fase de desarrollo beta. Como tal, es fundamental comprender y aceptar las siguientes condiciones antes de continuar:
+
+                1.  **Naturaleza Beta y Posibles Errores:** La herramienta se encuentra en etapa de prueba y aprendizaje. Aunque se ha diseñado para proporcionar información útil y relevante sobre derecho municipal chileno, **puede cometer errores o entregar información incompleta o inexacta.** No debe considerarse infalible ni sustituir el juicio profesional de un abogado especializado.
+
+                2.  **Uso Complementario, No Sustitutivo:**  Este Asesor Legal Virtual está concebido como una **herramienta complementaria a sus propios conocimientos y experiencia como concejal o alcalde.** Su propósito es brindar apoyo y orientación rápida, pero **nunca debe ser la base exclusiva para la toma de decisiones críticas o con consecuencias legales.**
+
+                3.  **Limitación de Responsabilidad:** El **Instituto Libertad no asume ninguna responsabilidad por las decisiones o acciones que usted tome basándose en la información proporcionada por esta herramienta.**  El uso de este Asesor Legal Virtual es bajo su propia responsabilidad y criterio.
+
+                4.  **Asesoría Profesional Especializada:**  Si requiere asesoramiento legal específico y detallado en derecho municipal, **le recomendamos encarecidamente contactar directamente al Instituto Libertad o consultar con un abogado especializado en derecho público y municipal.**  Esta herramienta no reemplaza la necesidad de una asesoría legal profesional cuando sea necesaria.
+
+                5.  **Finalidad de Ayuda y Apoyo:**  Esta herramienta se ofrece como un **recurso de ayuda y apoyo para facilitar su labor en el ámbito municipal**, proporcionando acceso rápido a información y análisis preliminar.
+
+                **En resumen, utilice esta herramienta con precaución, comprendiendo sus limitaciones y siempre validando la información con fuentes confiables y, cuando sea necesario, con asesoramiento legal profesional.**
+                """)
+            disclaimer_accepted = st.checkbox("Acepto los términos y condiciones y comprendo las limitaciones de esta herramienta.", key="disclaimer_checkbox")
+            if disclaimer_accepted:
+                st.session_state.disclaimer_accepted = True
+                initial_screen_placeholder.empty() # Clear initial screen
+                st.rerun() # Re-run to show main app
+
+        st.session_state.password_input = password # Update password input for persistence
+    st.stop() # Stop execution here if disclaimer not accepted
+
 # --- Configuración de la página ---
 st.set_page_config(
     page_title="Asesor Legal Municipal IA - Instituto Libertad",
@@ -316,6 +367,32 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# --- Disclaimer Status Display in Main Chat Area ---
+if st.session_state.disclaimer_accepted:
+    disclaimer_status_main_expander = st.expander("Disclaimer Aceptado - Clic para revisar o revocar", expanded=False)
+    with disclaimer_status_main_expander:
+        st.success("Disclaimer Aceptado. Puede usar el Asesor Legal Municipal Virtual.", icon="✅")
+        st.markdown("""
+                **Descargo de Responsabilidad Completo:**
+
+                Este Asesor Legal Municipal Virtual es una herramienta de inteligencia artificial en fase de desarrollo beta. Como tal, es fundamental comprender y aceptar las siguientes condiciones antes de continuar:
+
+                1.  **Naturaleza Beta y Posibles Errores:** La herramienta se encuentra en etapa de prueba y aprendizaje. Aunque se ha diseñado para proporcionar información útil y relevante sobre derecho municipal chileno, **puede cometer errores o entregar información incompleta o inexacta.** No debe considerarse infalible ni sustituir el juicio profesional de un abogado especializado.
+
+                2.  **Uso Complementario, No Sustitutivo:**  Este Asesor Legal Virtual está concebido como una **herramienta complementaria a sus propios conocimientos y experiencia como concejal o alcalde.** Su propósito es brindar apoyo y orientación rápida, pero **nunca debe ser la base exclusiva para la toma de decisiones críticas o con consecuencias legales.**
+
+                3.  **Limitación de Responsabilidad:** El **Instituto Libertad no asume ninguna responsabilidad por las decisiones o acciones que usted tome basándose en la información proporcionada por esta herramienta.**  El uso de este Asesor Legal Virtual es bajo su propia responsabilidad y criterio.
+
+                4.  **Asesoría Profesional Especializada:**  Si requiere asesoramiento legal específico y detallado en derecho municipal, **le recomendamos encarecidamente contactar directamente al Instituto Libertad o consultar con un abogado especializado en derecho público y municipal.**  Esta herramienta no reemplaza la necesidad de una asesoría legal profesional cuando sea necesaria.
+
+                5.  **Finalidad de Ayuda y Apoyo:**  Esta herramienta se ofrece como un **recurso de ayuda y apoyo para facilitar su labor en el ámbito municipal**, proporcionando acceso rápido a información y análisis preliminar.
+
+                **En resumen, utilice esta herramienta con precaución, comprendiendo sus limitaciones y siempre validando la información con fuentes confiables y, cuando sea necesario, con asesoramiento legal profesional.**
+                """)
+        if st.button("Revocar Disclaimer", key="revocar_disclaimer_main"): # Unique key
+            st.session_state.disclaimer_accepted = False
+            st.rerun()
+
 # --- Título principal y Subtítulo ---
 st.markdown('<h1 class="main-title">Asesor Legal Municipal Virtual</h1>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">Instituto Libertad</p>', unsafe_allow_html=True)
@@ -453,7 +530,7 @@ database_files_loaded_count = load_database_files_on_startup()
 def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, query: str) -> str:
     """Crea el prompt para el modelo, incluyendo solo la información relevante."""
     prompt_parts = [
-        "Eres un asesor legal virtual altamente especializado en **derecho municipal de Chile**, con un enfoque particular en asistir a **concejales** y alcaldes. Asume que **tu interlocutor es un concejal o concejala** que busca orientación para el correcto desempeño de su cargo. Si bien esta herramienta puede ser útil para otros usuarios interesados en derecho municipal, tu principal objetivo es asistir a los concejales en sus funciones. Tu experiencia abarca una amplia gama de temas relacionados con la administración y normativa municipal chilena.",
+        "Eres un asesor legal virtual altamente especializado en **derecho municipal de Chile**, con un enfoque particular en asistir a alcaldes y concejales. Tu experiencia abarca una amplia gama de temas relacionados con la administración y normativa municipal chilena.",
         "Tu objetivo principal es **responder directamente a las preguntas del usuario de manera precisa y concisa**, siempre **citando la fuente legal o normativa** que respalda tu respuesta. **Prioriza el uso de un lenguaje claro y accesible, evitando jerga legal compleja, para que la información sea fácilmente comprensible para concejales y alcaldes, incluso si no tienen formación legal.**",
         "**MANUAL DE CONCEJALES Y CONCEJALAS (USO COMO CONTEXTO):**",
         "Se te proporciona el documento 'MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt'. **Utiliza este manual como una guía de contexto y entendimiento del derecho municipal chileno y las funciones de los concejales.  No cites directamente este manual en tus respuestas, ni menciones su nombre. Úsalo para comprender mejor las preguntas y para identificar las leyes o normativas relevantes.**",
@@ -489,7 +566,7 @@ def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, qu
     """)
     prompt_parts.append("**Instrucciones específicas:**")
     prompt_parts.append("""
-*   Comienza tus respuestas con un **breve resumen conciso de la respuesta en una frase inicial**, **dirigiéndote al usuario como "Concejal" o "Concejala" al inicio del resumen.**
+*   Comienza tus respuestas con un **breve resumen conciso de la respuesta en una frase inicial.**
 *   Luego, **desarrolla la respuesta de manera completa y detallada**, proporcionando un análisis legal **citando siempre la fuente normativa específica.** **NO CITES EL 'MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt' DIRECTAMENTE.**
     *   **Prioriza la información de la base de datos de normas legales** cuando la pregunta se refiera específicamente a este documento. **Cita explícitamente el documento y la parte relevante (artículo, sección, etc.). Si el 'MANUAL DE CONCEJALES Y CONCEJALAS' te ayudó a entender la pregunta o identificar la norma, no lo cites, cita la norma legal.**
     *   **Luego, considera la información adicional proporcionada por el usuario** si es relevante para la pregunta. **Cita explícitamente el documento adjunto y la parte relevante.**
@@ -502,13 +579,13 @@ def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, qu
     prompt_parts.append("**Ejemplos de respuestas esperadas (con resumen y citación - SIN MANUAL):**")
     prompt_parts.append("""
 *   **Pregunta del Usuario:** "¿Cuáles son las funciones del concejo municipal?"
-    *   **Respuesta Esperada:** "Resumen, Concejal: Las funciones del concejo municipal son normativas, fiscalizadoras y representativas.
+    *   **Respuesta Esperada:** "Resumen: Las funciones del concejo municipal son normativas, fiscalizadoras y representativas.
         Desarrollo:  Efectivamente, las funciones del concejo municipal se clasifican en normativas, fiscalizadoras y representativas (Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades)."
 *   **Pregunta del Usuario:** "¿Qué dice el artículo 25 sobre las citaciones a las sesiones en el Reglamento del Concejo Municipal?"
-    *   **Respuesta Esperada:** "Resumen, Concejal: El artículo 25 del Reglamento del Concejo Municipal establece los plazos y formalidades para las citaciones a sesiones ordinarias y extraordinarias.
+    *   **Respuesta Esperada:** "Resumen: El artículo 25 del Reglamento del Concejo Municipal establece los plazos y formalidades para las citaciones a sesiones ordinarias y extraordinarias.
         Desarrollo:  Así es, el artículo 25 del Reglamento del Concejo Municipal detalla los plazos y formalidades que deben seguirse al realizar citaciones tanto para sesiones ordinarias como extraordinarias (Artículo 25 del Reglamento del Concejo Municipal)."
 *   **Pregunta del Usuario:** (Adjunta un archivo con jurisprudencia sobre transparencia municipal) "¿Cómo se aplica esta jurisprudencia en el concejo?"
-    *   **Respuesta Esperada:** "Resumen, Concejal: La jurisprudencia adjunta establece criterios sobre publicidad y acceso a la información pública municipal, relevantes para la transparencia del concejo.
+    *   **Respuesta Esperada:** "Resumen: La jurisprudencia adjunta establece criterios sobre publicidad y acceso a la información pública municipal, relevantes para la transparencia del concejo.
         Desarrollo:  Correcto, la jurisprudencia que adjuntas en 'Sentencia_Rol_1234-2023.txt' define criterios importantes sobre la publicidad de las sesiones del concejo y el acceso a la información pública municipal. Estos criterios deben ser considerados para asegurar la transparencia en todas las actuaciones del concejo (Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt')."
     """)
     prompt_parts.append("**Historial de conversación:**")
@@ -527,9 +604,7 @@ def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, qu
 # --- Inicializar el estado de la sesión ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    initial_message_content = """¡Hola! Soy tu asesor legal virtual especializado en derecho municipal chileno. **Esta es una herramienta del Instituto Libertad diseñada para guiar en las funciones de alcalde y concejales, sirviendo como apoyo, pero no como reemplazo del asesoramiento de un abogado especializado en derecho público.** Asumo que eres **Concejal o Concejala**, por lo que mis respuestas estarán orientadas a tus funciones. Si bien esta herramienta puede ser útil para otros usuarios, mi foco principal es apoyarte en tu rol. Adjunta cualquier información adicional que desees. ¿En qué puedo ayudarte hoy?"""
-    st.session_state.messages.append({"role": "assistant", "content": initial_message_content})
-
+    st.session_state.messages.append({"role": "assistant", "content": "¡Hola! Soy tu asesor legal virtual especializado en derecho municipal chileno. **Esta es una herramienta del Instituto Libertad diseñada para guiar en las funciones de alcalde y concejales, sirviendo como apoyo, pero no como reemplazo del asesoramiento de un abogado especializado en derecho público.** Estoy listo para analizar tus consultas. Adjunta cualquier información adicional que desees. ¿En qué puedo ayudarte hoy?"})
 
 if "saved_conversations" not in st.session_state:
     st.session_state.saved_conversations = {}
@@ -561,6 +636,17 @@ def unpin_conversation(name):
 with st.sidebar:
     st.markdown('<div class="sidebar-logo-container"></div>', unsafe_allow_html=True)
     st.header("Historial de Conversaciones")
+
+    disclaimer_status_expander = st.expander("Estado del Disclaimer", expanded=True) # Initially expanded
+    with disclaimer_status_expander:
+        if st.session_state.disclaimer_accepted:
+            st.success("Disclaimer Aceptado", icon="✅")
+            if st.button("Revocar Disclaimer"):
+                st.session_state.disclaimer_accepted = False
+                st.rerun()
+        else:
+            st.warning("Disclaimer No Aceptado", icon="⚠️")
+            st.markdown("Para usar el Asesor Legal, debes aceptar el Disclaimer.")
 
     st.subheader("Cargar Datos Adicionales")
     uploaded_files = st.file_uploader("Adjuntar archivos adicionales (.txt)", type=["txt"], help="Puedes adjuntar archivos .txt adicionales para que sean considerados en la respuesta.", accept_multiple_files=True) # Updated to only accept .txt
@@ -644,90 +730,92 @@ with st.sidebar:
         st.warning("No se ha encontrado o cargado la base de datos del reglamento automáticamente.")
 
 # --- Área de chat ---
-for message in st.session_state.messages:
-    with st.container():
-        if message["role"] == "user":
-            st.markdown(f'<div class="chat-message user-message"><div class="message-content">{message["content"]}</div></div>', unsafe_allow_html=True)
-        else:
-            # Ensure unsafe_allow_html=True is used for assistant messages to render Markdown/HTML
-            st.markdown(f'<div class="chat-message assistant-message"><div class="message-content">{message["content"]}</div></div>', unsafe_allow_html=True)
+if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accepted
+    for message in st.session_state.messages:
+        with st.container():
+            if message["role"] == "user":
+                st.markdown(f'<div class="chat-message user-message"><div class="message-content">{message["content"]}</div></div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="chat-message assistant-message"><div class="message-content">{message["content"]}</div></div>', unsafe_allow_html=True)
 
-# --- Campo de entrada para el usuario ---
-if prompt := st.chat_input("Escribe tu consulta sobre derecho municipal chileno...", key="chat_input"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    # --- Campo de entrada para el usuario ---
+    if prompt := st.chat_input("Escribe tu consulta sobre derecho municipal chileno...", key="chat_input"):
+        st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # Immediately display user message
-    with st.container():
-        st.markdown(f'<div class="chat-message user-message"><div class="message-content">{prompt}</div></div>', unsafe_allow_html=True)
+        # Immediately display user message
+        with st.container():
+            st.markdown(f'<div class="chat-message user-message"><div class="message-content">{prompt}</div></div>', unsafe_allow_html=True)
 
-    # Process query and generate assistant response in a separate container
-    with st.container(): # New container for processing and assistant response
-        # Analizar la consulta y cargar archivos relevantes
-        relevant_filenames = analyze_query(prompt, st.session_state.database_files)
-        relevant_database_data = {filename: st.session_state.database_files[filename] for filename in relevant_filenames}
+        # Process query and generate assistant response in a separate container
+        with st.container(): # New container for processing and assistant response
+            # Analizar la consulta y cargar archivos relevantes
+            relevant_filenames = analyze_query(prompt, st.session_state.database_files)
+            relevant_database_data = {filename: st.session_state.database_files[filename] for filename in relevant_filenames}
 
-        # Construir el prompt completo
-        prompt_completo = create_prompt(relevant_database_data, st.session_state.uploaded_files_content, prompt)
+            # Construir el prompt completo
+            prompt_completo = create_prompt(relevant_database_data, st.session_state.uploaded_files_content, prompt)
 
-        with st.chat_message("assistant", avatar="https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo"):
-            message_placeholder = st.empty()
-            full_response = ""
-            is_typing = True  # Indicar que el asistente está "escribiendo"
-            typing_placeholder = st.empty()
-            typing_placeholder.markdown('<div class="assistant-typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>', unsafe_allow_html=True)
+            with st.chat_message("assistant", avatar="https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo"):
+                message_placeholder = st.empty()
+                full_response = ""
+                is_typing = True  # Indicar que el asistente está "escribiendo"
+                typing_placeholder = st.empty()
+                typing_placeholder.markdown('<div class="assistant-typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>', unsafe_allow_html=True)
 
-            try:
-                response = model.generate_content(prompt_completo, stream=True) # Capture the response object
+                try:
+                    response = model.generate_content(prompt_completo, stream=True) # Capture the response object
 
-                # Add summary and detailed response structure
-                summary_finished = False
-                detailed_response = ""
-                full_response_chunks = []
+                    # Add summary and detailed response structure
+                    summary_finished = False
+                    detailed_response = ""
+                    full_response_chunks = []
 
-                for chunk in response: # Iterate over the response object
-                    chunk_text = chunk.text or ""
-                    full_response_chunks.append(chunk_text)
-                    full_response = "".join(full_response_chunks)
-
-
-                    if not summary_finished:
-                        # Basic heuristic to detect summary end (can be improved)
-                        if "\nDesarrollo:" in full_response:
-                            summary_finished = True
-                            message_placeholder.markdown(full_response + "▌") # Show both summary and start of development
-                        else:
-                            message_placeholder.markdown(full_response + "▌") # Still in summary part
-                    else: # After summary, just append
-                         message_placeholder.markdown(full_response + "▌")
-
-                    time.sleep(0.015)  # Slightly faster
+                    for chunk in response: # Iterate over the response object
+                        chunk_text = chunk.text or ""
+                        full_response_chunks.append(chunk_text)
+                        full_response = "".join(full_response_chunks)
 
 
-                if not response.candidates: # Check if candidates is empty AFTER stream completion
-                    full_response = """
-                    Lo siento, no pude generar una respuesta adecuada para tu pregunta con la información disponible.
-                    **Posibles razones:**
-                    * La pregunta podría ser demasiado compleja o específica.
-                    * La información necesaria para responder podría no estar en la base de datos actual o en los archivos adjuntos.
-                    * Limitaciones del modelo de IA.
+                        if not summary_finished:
+                            # Basic heuristic to detect summary end (can be improved)
+                            if "\nDesarrollo:" in full_response:
+                                summary_finished = True
+                                message_placeholder.markdown(full_response + "▌") # Show both summary and start of development
+                            else:
+                                message_placeholder.markdown(full_response + "▌") # Still in summary part
+                        else: # After summary, just append
+                             message_placeholder.markdown(full_response + "▌")
 
-                    **¿Qué puedes intentar?**
-                    * **Reformula tu pregunta:**  Intenta hacerla más simple o más directa.
-                    * **Proporciona más detalles:**  Añade contexto o información clave a tu pregunta.
-                    * **Carga archivos adicionales:**  Si tienes documentos relevantes, adjúntalos para ampliar la base de conocimiento.
-                    * **Consulta fuentes legales adicionales:**  Esta herramienta es un apoyo, pero no reemplaza el asesoramiento de un abogado especializado.
-                    """
-                    st.error("No se pudo generar una respuesta válida. Consulta la sección de ayuda en el mensaje del asistente.", icon="⚠️")
-
-                typing_placeholder.empty()  # Eliminar "escribiendo..." al finalizar
-                is_typing = False
-                message_placeholder.markdown(full_response)
+                        time.sleep(0.015)  # Slightly faster
 
 
-            except Exception as e:
-                typing_placeholder.empty()
-                is_typing = False
-                st.error(f"Ocurrió un error inesperado al generar la respuesta: {e}. Por favor, intenta de nuevo más tarde.", icon="🚨") # More prominent error icon
-                full_response = f"Ocurrió un error inesperado: {e}. Por favor, intenta de nuevo más tarde."
+                    if not response.candidates: # Check if candidates is empty AFTER stream completion
+                        full_response = """
+                        Lo siento, no pude generar una respuesta adecuada para tu pregunta con la información disponible.
+                        **Posibles razones:**
+                        * La pregunta podría ser demasiado compleja o específica.
+                        * La información necesaria para responder podría no estar en la base de datos actual o en los archivos adjuntos.
+                        * Limitaciones del modelo de IA.
 
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
+                        **¿Qué puedes intentar?**
+                        * **Reformula tu pregunta:**  Intenta hacerla más simple o más directa.
+                        * **Proporciona más detalles:**  Añade contexto o información clave a tu pregunta.
+                        * **Carga archivos adicionales:**  Si tienes documentos relevantes, adjúntalos para ampliar la base de conocimiento.
+                        * **Consulta fuentes legales adicionales:**  Esta herramienta es un apoyo, pero no reemplaza el asesoramiento de un abogado especializado.
+                        """
+                        st.error("No se pudo generar una respuesta válida. Consulta la sección de ayuda en el mensaje del asistente.", icon="⚠️")
+
+                    typing_placeholder.empty()  # Eliminar "escribiendo..." al finalizar
+                    is_typing = False
+                    message_placeholder.markdown(full_response)
+
+
+                except Exception as e:
+                    typing_placeholder.empty()
+                    is_typing = False
+                    st.error(f"Ocurrió un error inesperado al generar la respuesta: {e}. Por favor, intenta de nuevo más tarde.", icon="🚨") # More prominent error icon
+                    full_response = f"Ocurrió un error inesperado: {e}. Por favor, intenta de nuevo más tarde."
+
+                st.session_state.messages.append({"role": "assistant", "content": full_response})
+else: # Disclaimer not accepted, show message instead of chat
+    st.warning("Para usar el Asesor Legal Municipal Virtual, debes aceptar el Disclaimer en la barra lateral.", icon="⚠️")
