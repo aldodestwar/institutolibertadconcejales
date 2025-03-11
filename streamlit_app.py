@@ -533,7 +533,8 @@ def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, qu
             if filename == "MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt":
                 continue # Exclude manual from this section, it's already handled above
             description = get_file_description(filename)
-            prompt_parts.append(f"\n**{description} ({filename}):**\n{content}\n")
+            # Modified line to remove .txt from filename in prompt
+            prompt_parts.append(f"\n**{description} ({filename.replace('.txt', '')}):**\n{content}\n")
     else:
         prompt_parts.append("No se ha cargado información relevante de la base de datos para esta consulta.\n")
 
