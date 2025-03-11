@@ -527,11 +527,8 @@ def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, qu
 # --- Inicializar el estado de la sesión ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    st.session_state.messages.append({"role": "assistant", "content": "¡Hola! Soy tu asesor legal virtual especializado en derecho municipal chileno. **Esta es una herramienta del Instituto Libertad diseñada para guiar en las funciones de alcalde y concejales, sirviendo como apoyo, pero no como reemplazo del asesoramiento de un abogado especializado en derecho público.** Asumo que eres **Concejal o Concejala**, por lo que mis respuestas estarán orientadas a tus funciones. Si bien esta herramienta puede ser útil para otros usuarios, mi foco principal es apoyarte en tu rol. Adjunta cualquier información adicional que desees. ¿En qué puedo ayudarte hoy?"})
-
-    # **Correction for bold text rendering in initial message:**
     initial_message_content = """¡Hola! Soy tu asesor legal virtual especializado en derecho municipal chileno. **Esta es una herramienta del Instituto Libertad diseñada para guiar en las funciones de alcalde y concejales, sirviendo como apoyo, pero no como reemplazo del asesoramiento de un abogado especializado en derecho público.** Asumo que eres **Concejal o Concejala**, por lo que mis respuestas estarán orientadas a tus funciones. Si bien esta herramienta puede ser útil para otros usuarios, mi foco principal es apoyarte en tu rol. Adjunta cualquier información adicional que desees. ¿En qué puedo ayudarte hoy?"""
-    st.session_state.messages[0]["content"] = initial_message_content
+    st.session_state.messages.append({"role": "assistant", "content": initial_message_content})
 
 
 if "saved_conversations" not in st.session_state:
@@ -652,6 +649,7 @@ for message in st.session_state.messages:
         if message["role"] == "user":
             st.markdown(f'<div class="chat-message user-message"><div class="message-content">{message["content"]}</div></div>', unsafe_allow_html=True)
         else:
+            # Ensure unsafe_allow_html=True is used for assistant messages to render Markdown/HTML
             st.markdown(f'<div class="chat-message assistant-message"><div class="message-content">{message["content"]}</div></div>', unsafe_allow_html=True)
 
 # --- Campo de entrada para el usuario ---
