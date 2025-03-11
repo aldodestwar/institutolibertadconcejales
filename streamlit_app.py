@@ -453,7 +453,7 @@ database_files_loaded_count = load_database_files_on_startup()
 def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, query: str) -> str:
     """Crea el prompt para el modelo, incluyendo solo la información relevante."""
     prompt_parts = [
-        "Eres un asesor legal virtual altamente especializado en **derecho municipal de Chile**, con un enfoque particular en asistir a alcaldes y concejales. Tu experiencia abarca una amplia gama de temas relacionados con la administración y normativa municipal chilena.",
+        "Eres un asesor legal virtual altamente especializado en **derecho municipal de Chile**, con un enfoque particular en asistir a **concejales** y alcaldes. Asume que **tu interlocutor es un concejal o concejala** que busca orientación para el correcto desempeño de su cargo. Si bien esta herramienta puede ser útil para otros usuarios interesados en derecho municipal, tu principal objetivo es asistir a los concejales en sus funciones. Tu experiencia abarca una amplia gama de temas relacionados con la administración y normativa municipal chilena.",
         "Tu objetivo principal es **responder directamente a las preguntas del usuario de manera precisa y concisa**, siempre **citando la fuente legal o normativa** que respalda tu respuesta. **Prioriza el uso de un lenguaje claro y accesible, evitando jerga legal compleja, para que la información sea fácilmente comprensible para concejales y alcaldes, incluso si no tienen formación legal.**",
         "**MANUAL DE CONCEJALES Y CONCEJALAS (USO COMO CONTEXTO):**",
         "Se te proporciona el documento 'MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt'. **Utiliza este manual como una guía de contexto y entendimiento del derecho municipal chileno y las funciones de los concejales.  No cites directamente este manual en tus respuestas, ni menciones su nombre. Úsalo para comprender mejor las preguntas y para identificar las leyes o normativas relevantes.**",
@@ -489,7 +489,7 @@ def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, qu
     """)
     prompt_parts.append("**Instrucciones específicas:**")
     prompt_parts.append("""
-*   Comienza tus respuestas con un **breve resumen conciso de la respuesta en una frase inicial.**
+*   Comienza tus respuestas con un **breve resumen conciso de la respuesta en una frase inicial**, **dirigiéndote al usuario como "Concejal" o "Concejala" al inicio del resumen.**
 *   Luego, **desarrolla la respuesta de manera completa y detallada**, proporcionando un análisis legal **citando siempre la fuente normativa específica.** **NO CITES EL 'MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt' DIRECTAMENTE.**
     *   **Prioriza la información de la base de datos de normas legales** cuando la pregunta se refiera específicamente a este documento. **Cita explícitamente el documento y la parte relevante (artículo, sección, etc.). Si el 'MANUAL DE CONCEJALES Y CONCEJALAS' te ayudó a entender la pregunta o identificar la norma, no lo cites, cita la norma legal.**
     *   **Luego, considera la información adicional proporcionada por el usuario** si es relevante para la pregunta. **Cita explícitamente el documento adjunto y la parte relevante.**
@@ -502,13 +502,13 @@ def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, qu
     prompt_parts.append("**Ejemplos de respuestas esperadas (con resumen y citación - SIN MANUAL):**")
     prompt_parts.append("""
 *   **Pregunta del Usuario:** "¿Cuáles son las funciones del concejo municipal?"
-    *   **Respuesta Esperada:** "Resumen: Las funciones del concejo municipal son normativas, fiscalizadoras y representativas.
+    *   **Respuesta Esperada:** "Resumen, Concejal: Las funciones del concejo municipal son normativas, fiscalizadoras y representativas.
         Desarrollo:  Efectivamente, las funciones del concejo municipal se clasifican en normativas, fiscalizadoras y representativas (Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades)."
 *   **Pregunta del Usuario:** "¿Qué dice el artículo 25 sobre las citaciones a las sesiones en el Reglamento del Concejo Municipal?"
-    *   **Respuesta Esperada:** "Resumen: El artículo 25 del Reglamento del Concejo Municipal establece los plazos y formalidades para las citaciones a sesiones ordinarias y extraordinarias.
+    *   **Respuesta Esperada:** "Resumen, Concejal: El artículo 25 del Reglamento del Concejo Municipal establece los plazos y formalidades para las citaciones a sesiones ordinarias y extraordinarias.
         Desarrollo:  Así es, el artículo 25 del Reglamento del Concejo Municipal detalla los plazos y formalidades que deben seguirse al realizar citaciones tanto para sesiones ordinarias como extraordinarias (Artículo 25 del Reglamento del Concejo Municipal)."
 *   **Pregunta del Usuario:** (Adjunta un archivo con jurisprudencia sobre transparencia municipal) "¿Cómo se aplica esta jurisprudencia en el concejo?"
-    *   **Respuesta Esperada:** "Resumen: La jurisprudencia adjunta establece criterios sobre publicidad y acceso a la información pública municipal, relevantes para la transparencia del concejo.
+    *   **Respuesta Esperada:** "Resumen, Concejal: La jurisprudencia adjunta establece criterios sobre publicidad y acceso a la información pública municipal, relevantes para la transparencia del concejo.
         Desarrollo:  Correcto, la jurisprudencia que adjuntas en 'Sentencia_Rol_1234-2023.txt' define criterios importantes sobre la publicidad de las sesiones del concejo y el acceso a la información pública municipal. Estos criterios deben ser considerados para asegurar la transparencia en todas las actuaciones del concejo (Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt')."
     """)
     prompt_parts.append("**Historial de conversación:**")
@@ -527,7 +527,7 @@ def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, qu
 # --- Inicializar el estado de la sesión ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    st.session_state.messages.append({"role": "assistant", "content": "¡Hola! Soy tu asesor legal virtual especializado en derecho municipal chileno. **Esta es una herramienta del Instituto Libertad diseñada para guiar en las funciones de alcalde y concejales, sirviendo como apoyo, pero no como reemplazo del asesoramiento de un abogado especializado en derecho público.** Estoy listo para analizar tus consultas. Adjunta cualquier información adicional que desees. ¿En qué puedo ayudarte hoy?"})
+    st.session_state.messages.append({"role": "assistant", "content": "¡Hola! Soy tu asesor legal virtual especializado en derecho municipal chileno. **Esta es una herramienta del Instituto Libertad diseñada para guiar en las funciones de alcalde y concejales, sirviendo como apoyo, pero no como reemplazo del asesoramiento de un abogado especializado en derecho público.** Asumo que eres **Concejal o Concejala**, por lo que mis respuestas estarán orientadas a tus funciones. Si bien esta herramienta puede ser útil para otros usuarios, mi foco principal es apoyarte en tu rol. Adjunta cualquier información adicional que desees. ¿En qué puedo ayudarte hoy?"})
 
 if "saved_conversations" not in st.session_state:
     st.session_state.saved_conversations = {}
@@ -675,7 +675,7 @@ if prompt := st.chat_input("Escribe tu consulta sobre derecho municipal chileno.
 
             try:
                 response = model.generate_content(prompt_completo, stream=True) # Capture the response object
-                
+
                 # Add summary and detailed response structure
                 summary_finished = False
                 detailed_response = ""
