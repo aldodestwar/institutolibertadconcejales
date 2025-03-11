@@ -20,7 +20,7 @@ if "password_input" not in st.session_state:
 if not st.session_state.disclaimer_accepted:
     initial_screen_placeholder = st.empty()
     with initial_screen_placeholder.container():
-        st.title("Acceso al Asesor Legal Municipal Virtual")
+        st.title("Acceso al Asesor Legal Municipal IA")
         password = st.text_input("Ingrese la clave de usuario", type="password", value=st.session_state.password_input) # Persist input
 
         if st.button("Verificar Clave"): # Button for verification
@@ -36,11 +36,11 @@ if not st.session_state.disclaimer_accepted:
                 st.markdown("""
                 **Descargo de Responsabilidad Completo:**
 
-                Este Asesor Legal Municipal Virtual es una herramienta de inteligencia artificial en fase de desarrollo beta. Como tal, es fundamental comprender y aceptar las siguientes condiciones antes de continuar:
+                Este Asesor Legal Municipal IA es una herramienta de inteligencia artificial en fase de desarrollo beta. Como tal, es fundamental comprender y aceptar las siguientes condiciones antes de continuar:
 
                 1.  **Naturaleza Beta y Posibles Errores:** La herramienta se encuentra en etapa de prueba y aprendizaje. Aunque se ha diseñado para proporcionar información útil y relevante sobre derecho municipal chileno, **puede cometer errores o entregar información incompleta o inexacta.** No debe considerarse infalible ni sustituir el juicio profesional de un abogado especializado.
 
-                2.  **Uso Complementario, No Sustitutivo:**  Este Asesor Legal Virtual está concebido como una **herramienta complementaria a sus propios conocimientos y experiencia como concejal o alcalde.** Su propósito es brindar apoyo y orientación rápida, pero **nunca debe ser la base exclusiva para la toma de decisiones críticas o con consecuencias legales.**
+                2.  **Uso Complementario, No Sustitutivo:**  Este Asesor Legal IA está concebido como una **herramienta complementaria a sus propios conocimientos y experiencia como concejal o alcalde.** Su propósito es brindar apoyo y orientación rápida, pero **nunca debe ser la base exclusiva para la toma de decisiones críticas o con consecuencias legales.**
 
                 3.  **Limitación de Responsabilidad:** El **Instituto Libertad no asume ninguna responsabilidad por las decisiones o acciones que usted tome basándose en la información proporcionada por esta herramienta.**  El uso de este Asesor Legal Virtual es bajo su propia responsabilidad y criterio.
 
@@ -358,11 +358,11 @@ st.markdown(
 if st.session_state.disclaimer_accepted:
     disclaimer_status_main_expander = st.expander("Disclaimer Aceptado - Clic para revisar o revocar", expanded=False)
     with disclaimer_status_main_expander:
-        st.success("Disclaimer Aceptado. Puede usar el Asesor Legal Municipal Virtual.", icon="✅")
+        st.success("Disclaimer Aceptado. Puede usar el Asesor Legal Municipal IA.", icon="✅")
         st.markdown("""
                 **Descargo de Responsabilidad Completo:**
 
-                Este Asesor Legal Municipal Virtual es una herramienta de inteligencia artificial en fase de desarrollo beta. Como tal, es fundamental comprender y aceptar las siguientes condiciones antes de continuar:
+                Este Asesor Legal Municipal IA es una herramienta de inteligencia artificial en fase de desarrollo beta. Como tal, es fundamental comprender y aceptar las siguientes condiciones antes de continuar:
 
                 1.  **Naturaleza Beta y Posibles Errores:** La herramienta se encuentra en etapa de prueba y aprendizaje. Aunque se ha diseñado para proporcionar información útil y relevante sobre derecho municipal chileno, **puede cometer errores o entregar información incompleta o inexacta.** No debe considerarse infalible ni sustituir el juicio profesional de un abogado especializado.
 
@@ -385,7 +385,7 @@ col_logo, col_title = st.columns([0.1, 0.9]) # Adjust ratios as needed
 with col_logo:
     st.image("https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo", width=80) # Adjust width as needed
 with col_title:
-    st.markdown('<h1 class="main-title">Asesor Legal Municipal Virtual</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-title">Asesor Legal Municipal IA</h1>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">Instituto Libertad</p>', unsafe_allow_html=True)
 
 # --- API Key ---
@@ -811,4 +811,4 @@ if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accep
 
                 st.session_state.messages.append({"role": "assistant", "content": full_response})
 else: # Disclaimer not accepted, show message instead of chat
-    st.warning("Para usar el Asesor Legal Municipal Virtual, debes aceptar el Disclaimer en la barra lateral.", icon="⚠️")
+    st.warning("Para usar el Asesor Legal Municipal IA, debes aceptar el Disclaimer en la barra lateral.", icon="⚠️")
