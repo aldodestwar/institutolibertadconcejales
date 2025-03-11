@@ -6,13 +6,14 @@ import requests
 from io import BytesIO
 from pathlib import Path
 from typing import List, Dict
+import hashlib
 
 # --- Configuración de la página ---
 st.set_page_config(
     page_title="Asesor Legal Municipal IA - Instituto Libertad",
     page_icon="⚖️",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed" # Changed to "collapsed"
 )
 
 # --- Estilos CSS personalizados ---
@@ -330,23 +331,31 @@ model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
 script_dir = os.path.dirname(__file__)
 DATABASE_DIR = os.path.join(script_dir, "data")
 
-@st.cache_data(show_spinner=False, persist="disk") # Caching to load files only once
+@st.cache_data(show_spinner=False, persist="disk", max_entries=10) # Caching to load files only once, added max_entries
 def load_database_files_cached(directory: str) -> Dict[str, str]:
-    """Carga y cachea el contenido de todos los archivos .txt en el directorio."""
+    """Carga y cachea el contenido de todos los archivos .txt en el directorio, invalidando el caché si los archivos cambian."""
     file_contents = {}
     if not os.path.exists(directory):
         st.warning(f"Directorio de base de datos no encontrado: {directory}")
         return file_contents
 
-    for filename in os.listdir(directory):
-        if filename.endswith(".txt"):
-            filepath = os.path.join(directory, filename)
-            try:
-                with open(filepath, "r", encoding="utf-8") as f:
-                    file_contents[filename] = f.read()
-            except Exception as e:
-                st.error(f"Error al leer el archivo {filename}: {e}")
-    return file_contents
+    file_list = sorted([f for f in os.listdir(directory) if f.endswith(".txt")])
+    cache_key = hashlib.md5(str(file_list).encode()).hexdigest() # Using filenames for cache key
+
+    if "database_cache_key" in st.session_state and st.session_state.database_cache_key == cache_key and st.session_state.database_files:
+        return st.session_state.database_files # Return cached data if key is the same
+
+    st.session_state.database_files = {} # Reset in-memory cache before reloading
+    for filename in file_list:
+        filepath = os.path.join(directory, filename)
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                st.session_state.database_files[filename] = f.read() # Store in session_state cache
+        except Exception as e:
+            st.error(f"Error al leer el archivo {filename}: {e}")
+
+    st.session_state.database_cache_key = cache_key # Update cache key
+    return st.session_state.database_files
 
 def load_file_content(filepath: str) -> str:
     """Carga el contenido de un archivo .txt."""
@@ -429,12 +438,13 @@ if "database_files" not in st.session_state:
     st.session_state.database_files = {}
 if "uploaded_files_content" not in st.session_state:
     st.session_state.uploaded_files_content = ""
+if "database_cache_key" not in st.session_state:
+    st.session_state.database_cache_key = None
 
 # --- Carga inicial de archivos ---
 def load_database_files_on_startup():
     """Carga todos los archivos de la base de datos al inicio."""
-    if not st.session_state.database_files: # Load only once at startup
-        st.session_state.database_files = load_database_files_cached(DATABASE_DIR) # Use cached function
+    st.session_state.database_files = load_database_files_cached(DATABASE_DIR) # Load/refresh database files
     return len(st.session_state.database_files)
 
 database_files_loaded_count = load_database_files_on_startup()
@@ -479,8 +489,8 @@ def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, qu
     """)
     prompt_parts.append("**Instrucciones específicas:**")
     prompt_parts.append("""
-*   Comienza tus respuestas **respondiendo directamente a la pregunta del usuario en una frase inicial.**
-*   Luego, proporciona un breve análisis legal **citando siempre la fuente normativa específica.** **NO CITES EL 'MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt' DIRECTAMENTE.**
+*   Comienza tus respuestas con un **breve resumen conciso de la respuesta en una frase inicial.**
+*   Luego, **desarrolla la respuesta de manera completa y detallada**, proporcionando un análisis legal **citando siempre la fuente normativa específica.** **NO CITES EL 'MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt' DIRECTAMENTE.**
     *   **Prioriza la información de la base de datos de normas legales** cuando la pregunta se refiera específicamente a este documento. **Cita explícitamente el documento y la parte relevante (artículo, sección, etc.). Si el 'MANUAL DE CONCEJALES Y CONCEJALAS' te ayudó a entender la pregunta o identificar la norma, no lo cites, cita la norma legal.**
     *   **Luego, considera la información adicional proporcionada por el usuario** si es relevante para la pregunta. **Cita explícitamente el documento adjunto y la parte relevante.**
     *   Para preguntas sobre otros temas de derecho municipal chileno, utiliza tu conocimiento general, pero sé conciso y preciso. **Cita explícitamente la norma general del derecho municipal chileno.**
@@ -489,14 +499,17 @@ def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, qu
 *   **Si la información para responder la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
 *   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS. NUNCA CITES EL 'MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt'.**
     """)
-    prompt_parts.append("**Ejemplos de respuestas esperadas (con citación - SIN MANUAL):**")
+    prompt_parts.append("**Ejemplos de respuestas esperadas (con resumen y citación - SIN MANUAL):**")
     prompt_parts.append("""
 *   **Pregunta del Usuario:** "¿Cuáles son las funciones del concejo municipal?"
-    *   **Respuesta Esperada:** "Las funciones del concejo municipal son normativas, fiscalizadoras y representativas (Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades)."
+    *   **Respuesta Esperada:** "Resumen: Las funciones del concejo municipal son normativas, fiscalizadoras y representativas.
+        Desarrollo:  Efectivamente, las funciones del concejo municipal se clasifican en normativas, fiscalizadoras y representativas (Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades)."
 *   **Pregunta del Usuario:** "¿Qué dice el artículo 25 sobre las citaciones a las sesiones en el Reglamento del Concejo Municipal?"
-    *   **Respuesta Esperada:** "El artículo 25 del Reglamento del Concejo Municipal establece los plazos y formalidades para las citaciones a sesiones ordinarias y extraordinarias (Artículo 25 del Reglamento del Concejo Municipal)."
+    *   **Respuesta Esperada:** "Resumen: El artículo 25 del Reglamento del Concejo Municipal establece los plazos y formalidades para las citaciones a sesiones ordinarias y extraordinarias.
+        Desarrollo:  Así es, el artículo 25 del Reglamento del Concejo Municipal detalla los plazos y formalidades que deben seguirse al realizar citaciones tanto para sesiones ordinarias como extraordinarias (Artículo 25 del Reglamento del Concejo Municipal)."
 *   **Pregunta del Usuario:** (Adjunta un archivo con jurisprudencia sobre transparencia municipal) "¿Cómo se aplica esta jurisprudencia en el concejo?"
-    *   **Respuesta Esperada:** "La jurisprudencia adjunta en 'Sentencia_Rol_1234-2023.txt' establece criterios sobre la publicidad de las sesiones del concejo y el acceso a la información pública municipal, que deben ser considerados para asegurar la transparencia en las actuaciones del concejo (Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt')."
+    *   **Respuesta Esperada:** "Resumen: La jurisprudencia adjunta establece criterios sobre publicidad y acceso a la información pública municipal, relevantes para la transparencia del concejo.
+        Desarrollo:  Correcto, la jurisprudencia que adjuntas en 'Sentencia_Rol_1234-2023.txt' define criterios importantes sobre la publicidad de las sesiones del concejo y el acceso a la información pública municipal. Estos criterios deben ser considerados para asegurar la transparencia en todas las actuaciones del concejo (Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt')."
     """)
     prompt_parts.append("**Historial de conversación:**")
 
@@ -662,10 +675,31 @@ if prompt := st.chat_input("Escribe tu consulta sobre derecho municipal chileno.
 
             try:
                 response = model.generate_content(prompt_completo, stream=True) # Capture the response object
+                
+                # Add summary and detailed response structure
+                summary_finished = False
+                detailed_response = ""
+                full_response_chunks = []
+
                 for chunk in response: # Iterate over the response object
-                    full_response += (chunk.text or "")
-                    message_placeholder.markdown(full_response + "▌")
-                    time.sleep(0.015)  # Ligeramente más rápido
+                    chunk_text = chunk.text or ""
+                    full_response_chunks.append(chunk_text)
+                    full_response = "".join(full_response_chunks)
+
+
+                    if not summary_finished:
+                        # Basic heuristic to detect summary end (can be improved)
+                        if "\nDesarrollo:" in full_response:
+                            summary_finished = True
+                            message_placeholder.markdown(full_response + "▌") # Show both summary and start of development
+                        else:
+                            message_placeholder.markdown(full_response + "▌") # Still in summary part
+                    else: # After summary, just append
+                         message_placeholder.markdown(full_response + "▌")
+
+                    time.sleep(0.015)  # Slightly faster
+
+
                 if not response.candidates: # Check if candidates is empty AFTER stream completion
                     full_response = """
                     Lo siento, no pude generar una respuesta adecuada para tu pregunta con la información disponible.
