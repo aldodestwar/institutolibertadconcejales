@@ -732,7 +732,7 @@ if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accep
                     st.markdown(f'<div class="message-content">{message["content"]}</div>', unsafe_allow_html=True)
 
     # --- Campo de entrada para el usuario ---
-    if prompt := st.chat_input("Escribe tu consulta sobre derecho municipal chileno...", key="chat_input"):
+    if prompt := st.chat_input("Escribe tu consulta...", key="chat_input"):
         st.session_state.messages.append({"role": "user", "content": prompt})
 
         # Immediately display user message
