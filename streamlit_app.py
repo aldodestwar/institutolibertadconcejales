@@ -529,6 +529,11 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
     st.session_state.messages.append({"role": "assistant", "content": "¡Hola! Soy tu asesor legal virtual especializado en derecho municipal chileno. **Esta es una herramienta del Instituto Libertad diseñada para guiar en las funciones de alcalde y concejales, sirviendo como apoyo, pero no como reemplazo del asesoramiento de un abogado especializado en derecho público.** Asumo que eres **Concejal o Concejala**, por lo que mis respuestas estarán orientadas a tus funciones. Si bien esta herramienta puede ser útil para otros usuarios, mi foco principal es apoyarte en tu rol. Adjunta cualquier información adicional que desees. ¿En qué puedo ayudarte hoy?"})
 
+    # **Correction for bold text rendering in initial message:**
+    initial_message_content = """¡Hola! Soy tu asesor legal virtual especializado en derecho municipal chileno. **Esta es una herramienta del Instituto Libertad diseñada para guiar en las funciones de alcalde y concejales, sirviendo como apoyo, pero no como reemplazo del asesoramiento de un abogado especializado en derecho público.** Asumo que eres **Concejal o Concejala**, por lo que mis respuestas estarán orientadas a tus funciones. Si bien esta herramienta puede ser útil para otros usuarios, mi foco principal es apoyarte en tu rol. Adjunta cualquier información adicional que desees. ¿En qué puedo ayudarte hoy?"""
+    st.session_state.messages[0]["content"] = initial_message_content
+
+
 if "saved_conversations" not in st.session_state:
     st.session_state.saved_conversations = {}
 
