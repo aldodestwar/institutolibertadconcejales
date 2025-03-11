@@ -596,7 +596,7 @@ def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, qu
 # --- Inicializar el estado de la sesión ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    st.session_state.messages.append({"role": "assistant", "content": "¡Hola! Soy tu asesor legal virtual especializado en derecho municipal chileno. **Esta es una herramienta del Instituto Libertad diseñada para guiar en las funciones de alcalde y concejales, sirviendo como apoyo, pero no como reemplazo del asesoramiento de un abogado especializado en derecho público.** Estoy listo para analizar tus consultas. Adjunta cualquier información adicional que desees. ¿En qué puedo ayudarte hoy?"})
+    st.session_state.messages.append({"role": "assistant", "content": "¡Hola! Soy tu asesor legal virtual especializado en derecho municipal chileno. Esta es una herramienta del Instituto Libertad diseñada para guiar en las funciones de alcalde y concejales, sirviendo como apoyo, pero no como reemplazo del asesoramiento de un abogado especializado en derecho público. Estoy listo para analizar tus consultas. Adjunta cualquier información adicional que desees. ¿En qué puedo ayudarte hoy?"})
 
 if "saved_conversations" not in st.session_state:
     st.session_state.saved_conversations = {}
