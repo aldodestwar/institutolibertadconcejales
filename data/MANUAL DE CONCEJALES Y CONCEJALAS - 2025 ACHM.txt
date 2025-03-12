@@ -1360,4 +1360,4 @@ Distribución:
 2.	XXXXXXXXXXXX concejal.
 
 
-Concejo municipal: En concejo municipal, respecto de un punto de tabla, cuando se habla de un punto de tabla, por ejemplo modificación presupuestaria se acepta o se rechaza el punto de tabla entero respecto de modificación presupuestaria, pero no se puede aceptar o rechazar por parte, y esto aplica respecto a cualquier tema.
+Respecto a la votación de un punto en tabla del concejo municipal: En concejo municipal, respecto de un punto de tabla, cuando se habla de un punto de tabla, por ejemplo modificación presupuestaria se acepta o se rechaza el punto de tabla entero respecto de modificación presupuestaria, pero no se puede aceptar o rechazar por parte, y esto aplica respecto a cualquier tema, al menos en principio, pero el reglamento del concejo podría establecer algo distinto, por eso en temas de concejo municipal es bueno conocer que establece el reglamento del concejo de la comuna correspondiente. 
