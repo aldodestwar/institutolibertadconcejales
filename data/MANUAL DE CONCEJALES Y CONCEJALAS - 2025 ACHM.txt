@@ -1359,3 +1359,5 @@ Distribución:
 1.	Secretario Concejo Municipal
 2.	XXXXXXXXXXXX concejal.
 
+
+Concejo municipal: En concejo municipal, respecto de un punto de tabla, cuando se habla de un punto de tabla, por ejemplo modificación presupuestaria se acepta o se rechaza el punto de tabla entero respecto de modificación presupuestaria, pero no se puede aceptar o rechazar por parte, y esto aplica respecto a cualquier tema.
