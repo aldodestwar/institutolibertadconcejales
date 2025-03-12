@@ -40,7 +40,7 @@ if not st.session_state.disclaimer_accepted:
 
                 1.  **Naturaleza Beta y Posibles Errores:** La herramienta se encuentra en etapa de prueba y aprendizaje. Aunque se ha diseñado para proporcionar información útil y relevante sobre derecho municipal chileno, **puede cometer errores o entregar información incompleta o inexacta.** No debe considerarse infalible ni sustituir el juicio profesional de un abogado especializado.
 
-                2.  **Uso Complementario, No Sustitutivo:**  Este Asesor Legal IA está concebido como una **herramienta complementaria a sus propios conocimientos y experiencia como concejal o alcalde.** Su propósito es brindar apoyo y orientación rápida, pero **nunca debe ser la base exclusiva para la toma de decisiones críticas o con consecuencias legales.**
+                2.  **Uso Complementario, No Sustitutivo:**  Este Asesor Legal Virtual está concebido como una **herramienta complementaria a sus propios conocimientos y experiencia como concejal o alcalde.** Su propósito es brindar apoyo y orientación rápida, pero **nunca debe ser la base exclusiva para la toma de decisiones críticas o con consecuencias legales.**
 
                 3.  **Limitación de Responsabilidad:** El **Instituto Libertad no asume ninguna responsabilidad por las decisiones o acciones que usted tome basándose en la información proporcionada por esta herramienta.**  El uso de este Asesor Legal Virtual es bajo su propia responsabilidad y criterio.
 
@@ -456,50 +456,84 @@ def discover_and_load_files(directory: str) -> Dict[str, str]:
             file_contents[filename] = load_file_content(filepath)
     return file_contents
 
-def analyze_query(query: str, file_contents: Dict[str, str]) -> List[str]:
-    """
-    Analiza la consulta del usuario para determinar qué archivos son relevantes.
-    Prioriza la búsqueda por frases exactas en el nombre del archivo y las primeras líneas del contenido.
-    Excluye el manual de concejales de los archivos relevantes para citar directamente.
-    """
-    relevant_files = []
 
-    if "hola" in query.lower() or "saludo" in query.lower():
-        return []
+# --- Prompt mejorado MODIFICADO para enviar TODOS los documentos ---
+def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, query: str) -> str:
+    """Crea el prompt para el modelo, incluyendo TODA la información de la base de datos y archivos adjuntos."""
+    prompt_parts = [
+        "Eres un asesor legal virtual altamente especializado en **derecho municipal de Chile**, con un enfoque particular en asistir a alcaldes y concejales. Tu experiencia abarca una amplia gama de temas relacionados con la administración y normativa municipal chilena.",
+        "Tu objetivo principal es **responder directamente a las preguntas del usuario de manera precisa y concisa**, siempre **citando la fuente legal o normativa** que respalda tu respuesta. **Prioriza el uso de un lenguaje claro y accesible, evitando jerga legal compleja, para que la información sea fácilmente comprensible para concejales y alcaldes, incluso si no tienen formación legal.**",
+        "**MANUAL DE CONCEJALES Y CONCEJALAS (USO COMO CONTEXTO):**",
+        "Se te proporciona el documento 'MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt'. **Utiliza este manual como una guía de contexto y entendimiento del derecho municipal chileno y las funciones de los concejales.  No cites directamente este manual en tus respuestas, ni menciones su nombre. Úsalo para comprender mejor las preguntas y para identificar las leyes o normativas relevantes.**",
+        "**INFORMACIÓN DE LA BASE DE DATOS (NORMAS LEGALES):**" # Modificado el título
+    ]
 
-    query_lower = query.lower()
-    query_keywords = [keyword.lower() for keyword in query_lower.split()]
+    if database_files_content: # Modificado para usar database_files_content directamente
+        for filename, content in database_files_content.items(): # Iterar sobre TODOS los archivos
+            if filename == "MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt":
+                continue # Exclude manual from this section, it's already handled above
+            description = get_file_description(filename)
+            # Modified line to remove .txt from filename in prompt
+            prompt_parts.append(f"\n**{description} ({filename.replace('.txt', '')}):**\n{content}\n")
+    else:
+        prompt_parts.append("No se ha cargado información de la base de datos.\n") # Modificado el mensaje
 
-    for filename, content in file_contents.items():
-        if filename == "MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt": # Exclude manual from direct citation
-            continue
+    prompt_parts.append("**INFORMACIÓN ADICIONAL PROPORCIONADA POR EL USUARIO:**")
+    prompt_parts.append(uploaded_data if uploaded_data else "No se proporcionó información adicional.\n")
 
-        filename_lower = filename.lower()
-        content_lower = content.lower()
+    prompt_parts.extend([ # Usamos extend para añadir múltiples líneas de una vez
+        "**IMPORTANTE:** Antes de responder, analiza cuidadosamente la pregunta del usuario para determinar si se relaciona específicamente con la **base de datos de normas legales**, con la **información adicional proporcionada por el usuario**, o con el **derecho municipal general**, **utilizando el 'MANUAL DE CONCEJALES Y CONCEJALAS' como guía contextual para entender el trasfondo y las figuras jurídicas involucradas en la pregunta, pero sin citarlo directamente.**",
+        """
+*   **Si la pregunta se relaciona con la base de datos de normas legales:** Utiliza la información de la base de datos como tu principal fuente para responder. **Siempre cita el artículo, sección o norma específica de la base de datos que justifica tu respuesta. Indica claramente en tu respuesta que estás utilizando información de la base de datos y el documento específico.**  Menciona el nombre del documento y la parte pertinente (ej. "Artículo 25 del Reglamento del Concejo Municipal"). **Si el 'MANUAL DE CONCEJALES Y CONCEJALAS' te ayudó a entender la pregunta o identificar la norma legal relevante, no lo cites, cita directamente la norma legal de la base de datos.**
+*   **Si la pregunta se relaciona con la información adicional proporcionada:** Utiliza esa información como tu principal fuente. **Siempre cita la parte específica de la información adicional que justifica tu respuesta (ej. "Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt'"). Indica claramente en tu respuesta que estás utilizando información proporcionada por el usuario y el documento específico.**
+*   **Si la pregunta es sobre otros aspectos del derecho municipal chileno:** Utiliza tu conocimiento general en la materia. **Siempre cita la norma legal general del derecho municipal chileno que justifica tu respuesta (ej. "Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades"). Indica claramente en tu respuesta que estás utilizando tu conocimiento general de derecho municipal chileno y la norma general.**
+        """,
+        "Esta es una herramienta creada por y para el Instituto Libertad por Aldo Manuel Herrera Hernández.",
+        "**Metodología LegalDesign:**",
+        """
+*   **Claridad y Concisión:** Responde de manera directa y al grano. Evita rodeos innecesarios.
+*   **Estructura:** Organiza las respuestas con encabezados, viñetas o listas numeradas para facilitar la lectura y comprensión, especialmente si hay varios puntos en la respuesta.
+*   **Visualizaciones (si es posible):** Aunque textual, piensa en cómo la información podría representarse visualmente para mejorar la comprensión (por ejemplo, un flujo de proceso mentalmente).
+*   **Ejemplos:**  Si es pertinente, incluye ejemplos prácticos y sencillos para ilustrar los conceptos legales.
+*   **Lenguaje sencillo:** Utiliza un lenguaje accesible para personas sin formación legal especializada, pero manteniendo la precisión legal.
+        """,
+        "**Instrucciones específicas:**",
+        """
+*   Comienza tus respuestas con un **breve resumen conciso de la respuesta en una frase inicial.**
+*   Luego, **desarrolla la respuesta de manera completa y detallada**, proporcionando un análisis legal **citando siempre la fuente normativa específica.** **NO CITES EL 'MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt' DIRECTAMENTE.**
+    *   **Prioriza la información de la base de datos de normas legales** cuando la pregunta se refiera específicamente a este documento. **Cita explícitamente el documento y la parte relevante (artículo, sección, etc.). Si el 'MANUAL DE CONCEJALES Y CONCEJALAS' te ayudó a entender la pregunta o identificar la norma, no lo cites, cita la norma legal.**
+    *   **Luego, considera la información adicional proporcionada por el usuario** si es relevante para la pregunta. **Cita explícitamente el documento adjunto y la parte relevante.**
+    *   Para preguntas sobre otros temas de derecho municipal chileno, utiliza tu conocimiento general, pero sé conciso y preciso. **Cita explícitamente la norma general del derecho municipal chileno.**
+*   **Si la información para responder la pregunta no se encuentra en la base de datos de normas legales proporcionada, responde de forma concisa: "Según la información disponible en la base de datos, no puedo responder a esta pregunta."**
+*   **Si la información para responder la pregunta no se encuentra en la información adicional proporcionada, responde de forma concisa: "Según la información adicional proporcionada, no puedo responder a esta pregunta."**
+*   **Si la información para responder la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
+*   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS. NUNCA CITES EL 'MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt'.**
+        """,
+        "**Ejemplos de respuestas esperadas (con resumen y citación - SIN MANUAL):**",
+        """
+*   **Pregunta del Usuario:** "¿Cuáles son las funciones del concejo municipal?"
+    *   **Respuesta Esperada:** "Resumen: Las funciones del concejo municipal son normativas, fiscalizadoras y representativas.
+        Desarrollo:  Efectivamente, las funciones del concejo municipal se clasifican en normativas, fiscalizadoras y representativas (Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades)."
+*   **Pregunta del Usuario:** "¿Qué dice el artículo 25 sobre las citaciones a las sesiones en el Reglamento del Concejo Municipal?"
+    *   **Respuesta Esperada:** "Resumen: El artículo 25 del Reglamento del Concejo Municipal establece los plazos y formalidades para las citaciones a sesiones ordinarias y extraordinarias.
+        Desarrollo:  Así es, el artículo 25 del Reglamento del Concejo Municipal detalla los plazos y formalidades que deben seguirse al realizar citaciones tanto para sesiones ordinarias como extraordinarias (Artículo 25 del Reglamento del Concejo Municipal)."
+*   **Pregunta del Usuario:** (Adjunta un archivo con jurisprudencia sobre transparencia municipal) "¿Cómo se aplica esta jurisprudencia en el concejo?"
+    *   **Respuesta Esperada:** "Resumen: La jurisprudencia adjunta establece criterios sobre publicidad y acceso a la información pública municipal, relevantes para la transparencia del concejo.
+        Desarrollo:  Correcto, la jurisprudencia que adjuntas en 'Sentencia_Rol_1234-2023.txt' define criterios importantes sobre la publicidad de las sesiones del concejo y el acceso a la información pública municipal. Estos criterios deben ser considerados para asegurar la transparencia en todas las actuaciones del concejo (Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt')."
+        """,
+        "**Historial de conversación:**"
+    ])
 
-        # Prioritize exact phrase matching in filename
-        if query_lower in filename_lower:
-            relevant_files.append(filename)
-            continue
+    # Añadir historial de conversación
+    for msg in st.session_state.messages[:-1]:
+        if msg["role"] == "user":
+            prompt_parts.append(f"Usuario: {msg['content']}\n")
+        else:
+            prompt_parts.append(f"Asistente: {msg['content']}\n")
 
-        # Search for exact phrases in the first part of the content (e.g., first 5 paragraphs or 500 words)
-        # More focused and efficient than searching the entire content initially
-        content_preview = " ".join(content_lower.split()[:500]) # Analyze first 500 words
-        if query_lower in content_preview:
-            relevant_files.append(filename)
-            continue
+    prompt_parts.append(f"**Pregunta actual del usuario:** {query}")
 
-        # Broader keyword search in filename (if exact phrase not found)
-        if any(keyword in filename_lower for keyword in query_keywords) and filename not in relevant_files:
-            relevant_files.append(filename)
-            continue
-
-        # Broader keyword search in the first part of the content (if exact phrase and filename keyword not found)
-        if any(keyword in content_preview for keyword in query_keywords) and filename not in relevant_files:
-             relevant_files.append(filename)
-             continue
-
-    return relevant_files
+    return "\n".join(prompt_parts)
 
 # --- Inicializar el estado para los archivos ---
 if "database_files" not in st.session_state:
@@ -516,82 +550,6 @@ def load_database_files_on_startup():
     return len(st.session_state.database_files)
 
 database_files_loaded_count = load_database_files_on_startup()
-
-# --- Prompt mejorado ---
-def create_prompt(relevant_database_data: Dict[str, str], uploaded_data: str, query: str) -> str:
-    """Crea el prompt para el modelo, incluyendo solo la información relevante."""
-    prompt_parts = [
-        "Eres un asesor legal virtual altamente especializado en **derecho municipal de Chile**, con un enfoque particular en asistir a alcaldes y concejales. Tu experiencia abarca una amplia gama de temas relacionados con la administración y normativa municipal chilena.",
-        "Tu objetivo principal es **responder directamente a las preguntas del usuario de manera precisa y concisa**, siempre **citando la fuente legal o normativa** que respalda tu respuesta. **Prioriza el uso de un lenguaje claro y accesible, evitando jerga legal compleja, para que la información sea fácilmente comprensible para concejales y alcaldes, incluso si no tienen formación legal.**",
-        "**MANUAL DE CONCEJALES Y CONCEJALAS (USO COMO CONTEXTO):**",
-        "Se te proporciona el documento 'MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt'. **Utiliza este manual como una guía de contexto y entendimiento del derecho municipal chileno y las funciones de los concejales.  No cites directamente este manual en tus respuestas, ni menciones su nombre. Úsalo para comprender mejor las preguntas y para identificar las leyes o normativas relevantes.**",
-        "**INFORMACIÓN RELEVANTE DE LA BASE DE DATOS (NORMAS LEGALES):**"
-    ]
-
-    if relevant_database_data:
-        for filename, content in relevant_database_data.items():
-            if filename == "MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt":
-                continue # Exclude manual from this section, it's already handled above
-            description = get_file_description(filename)
-            # Modified line to remove .txt from filename in prompt
-            prompt_parts.append(f"\n**{description} ({filename.replace('.txt', '')}):**\n{content}\n")
-    else:
-        prompt_parts.append("No se ha cargado información relevante de la base de datos para esta consulta.\n")
-
-    prompt_parts.append("**INFORMACIÓN ADICIONAL PROPORCIONADA POR EL USUARIO:**")
-    prompt_parts.append(uploaded_data if uploaded_data else "No se proporcionó información adicional.\n")
-
-    prompt_parts.append("**IMPORTANTE:** Antes de responder, analiza cuidadosamente la pregunta del usuario para determinar si se relaciona específicamente con la **base de datos de normas legales**, con la **información adicional proporcionada por el usuario**, o con el **derecho municipal general**, **utilizando el 'MANUAL DE CONCEJALES Y CONCEJALAS' como guía contextual para entender el trasfondo y las figuras jurídicas involucradas en la pregunta, pero sin citarlo directamente.**")
-    prompt_parts.append("""
-*   **Si la pregunta se relaciona con la base de datos de normas legales:** Utiliza la información de la base de datos como tu principal fuente para responder. **Siempre cita el artículo, sección o norma específica de la base de datos que justifica tu respuesta. Indica claramente en tu respuesta que estás utilizando información de la base de datos y el documento específico.**  Menciona el nombre del documento y la parte pertinente (ej. "Artículo 25 del Reglamento del Concejo Municipal"). **Si el 'MANUAL DE CONCEJALES Y CONCEJALAS' te ayudó a entender la pregunta o identificar la norma legal relevante, no lo cites, cita directamente la norma legal de la base de datos.**
-*   **Si la pregunta se relaciona con la información adicional proporcionada:** Utiliza esa información como tu principal fuente. **Siempre cita la parte específica de la información adicional que justifica tu respuesta (ej. "Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt'"). Indica claramente en tu respuesta que estás utilizando información proporcionada por el usuario y el documento específico.**
-*   **Si la pregunta es sobre otros aspectos del derecho municipal chileno:** Utiliza tu conocimiento general en la materia. **Siempre cita la norma legal general del derecho municipal chileno que justifica tu respuesta (ej. "Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades"). Indica claramente en tu respuesta que estás utilizando tu conocimiento general de derecho municipal chileno y la norma general.**
-    """)
-    prompt_parts.append("Esta es una herramienta creada por y para el Instituto Libertad por Aldo Manuel Herrera Hernández.")
-    prompt_parts.append("**Metodología LegalDesign:**")
-    prompt_parts.append("""
-*   **Claridad y Concisión:** Responde de manera directa y al grano. Evita rodeos innecesarios.
-*   **Estructura:** Organiza las respuestas con encabezados, viñetas o listas numeradas para facilitar la lectura y comprensión, especialmente si hay varios puntos en la respuesta.
-*   **Visualizaciones (si es posible):** Aunque textual, piensa en cómo la información podría representarse visualmente para mejorar la comprensión (por ejemplo, un flujo de proceso mentalmente).
-*   **Ejemplos:**  Si es pertinente, incluye ejemplos prácticos y sencillos para ilustrar los conceptos legales.
-*   **Lenguaje sencillo:** Utiliza un lenguaje accesible para personas sin formación legal especializada, pero manteniendo la precisión legal.
-    """)
-    prompt_parts.append("**Instrucciones específicas:**")
-    prompt_parts.append("""
-*   Comienza tus respuestas con un **breve resumen conciso de la respuesta en una frase inicial.**
-*   Luego, **desarrolla la respuesta de manera completa y detallada**, proporcionando un análisis legal **citando siempre la fuente normativa específica.** **NO CITES EL 'MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt' DIRECTAMENTE.**
-    *   **Prioriza la información de la base de datos de normas legales** cuando la pregunta se refiera específicamente a este documento. **Cita explícitamente el documento y la parte relevante (artículo, sección, etc.). Si el 'MANUAL DE CONCEJALES Y CONCEJALAS' te ayudó a entender la pregunta o identificar la norma, no lo cites, cita la norma legal.**
-    *   **Luego, considera la información adicional proporcionada por el usuario** si es relevante para la pregunta. **Cita explícitamente el documento adjunto y la parte relevante.**
-    *   Para preguntas sobre otros temas de derecho municipal chileno, utiliza tu conocimiento general, pero sé conciso y preciso. **Cita explícitamente la norma general del derecho municipal chileno.**
-*   **Si la información para responder la pregunta no se encuentra en la base de datos de normas legales proporcionada, responde de forma concisa: "Según la información disponible en la base de datos, no puedo responder a esta pregunta."**
-*   **Si la información para responder la pregunta no se encuentra en la información adicional proporcionada, responde de forma concisa: "Según la información adicional proporcionada, no puedo responder a esta pregunta."**
-*   **Si la información para responder la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
-*   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS. NUNCA CITES EL 'MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt'.**
-    """)
-    prompt_parts.append("**Ejemplos de respuestas esperadas (con resumen y citación - SIN MANUAL):**")
-    prompt_parts.append("""
-*   **Pregunta del Usuario:** "¿Cuáles son las funciones del concejo municipal?"
-    *   **Respuesta Esperada:** "Resumen: Las funciones del concejo municipal son normativas, fiscalizadoras y representativas.
-        Desarrollo:  Efectivamente, las funciones del concejo municipal se clasifican en normativas, fiscalizadoras y representativas (Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades)."
-*   **Pregunta del Usuario:** "¿Qué dice el artículo 25 sobre las citaciones a las sesiones en el Reglamento del Concejo Municipal?"
-    *   **Respuesta Esperada:** "Resumen: El artículo 25 del Reglamento del Concejo Municipal establece los plazos y formalidades para las citaciones a sesiones ordinarias y extraordinarias.
-        Desarrollo:  Así es, el artículo 25 del Reglamento del Concejo Municipal detalla los plazos y formalidades que deben seguirse al realizar citaciones tanto para sesiones ordinarias como extraordinarias (Artículo 25 del Reglamento del Concejo Municipal)."
-*   **Pregunta del Usuario:** (Adjunta un archivo con jurisprudencia sobre transparencia municipal) "¿Cómo se aplica esta jurisprudencia en el concejo?"
-    *   **Respuesta Esperada:** "Resumen: La jurisprudencia adjunta establece criterios sobre publicidad y acceso a la información pública municipal, relevantes para la transparencia del concejo.
-        Desarrollo:  Correcto, la jurisprudencia que adjuntas en 'Sentencia_Rol_1234-2023.txt' define criterios importantes sobre la publicidad de las sesiones del concejo y el acceso a la información pública municipal. Estos criterios deben ser considerados para asegurar la transparencia en todas las actuaciones del concejo (Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt')."
-    """)
-    prompt_parts.append("**Historial de conversación:**")
-
-    # Añadir historial de conversación
-    for msg in st.session_state.messages[:-1]:
-        if msg["role"] == "user":
-            prompt_parts.append(f"Usuario: {msg['content']}\n")
-        else:
-            prompt_parts.append(f"Asistente: {msg['content']}\n")
-
-    prompt_parts.append(f"**Pregunta actual del usuario:** {query}")
-
-    return "\n".join(prompt_parts)
 
 # --- Inicializar el estado de la sesión ---
 if "messages" not in st.session_state:
@@ -741,12 +699,12 @@ if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accep
 
         # Process query and generate assistant response in a separate container
         with st.container(): # New container for processing and assistant response
-            # Analizar la consulta y cargar archivos relevantes
-            relevant_filenames = analyze_query(prompt, st.session_state.database_files)
-            relevant_database_data = {filename: st.session_state.database_files[filename] for filename in relevant_filenames}
+            # **YA NO ANALIZAMOS LA CONSULTA - ENVIAMOS TODOS LOS ARCHIVOS**
+            # relevant_filenames = analyze_query(prompt, st.session_state.database_files) # REMOVE THIS LINE
+            # relevant_database_data = {filename: st.session_state.database_files[filename] for filename in relevant_filenames} # REMOVE THIS LINE
 
-            # Construir el prompt completo
-            prompt_completo = create_prompt(relevant_database_data, st.session_state.uploaded_files_content, prompt)
+            # Construir el prompt completo - AHORA CON TODOS LOS ARCHIVOS
+            prompt_completo = create_prompt(st.session_state.database_files, st.session_state.uploaded_files_content, prompt) # MODIFICADO
 
             with st.chat_message("assistant", avatar="https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo"):
                 message_placeholder = st.empty()
