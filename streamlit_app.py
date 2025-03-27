@@ -7,6 +7,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import List, Dict
 import hashlib
+import random # Import random module
 
 # --- Password and Disclaimer State ---
 if "authentication_successful" not in st.session_state:
@@ -15,6 +16,8 @@ if "disclaimer_accepted" not in st.session_state:
     st.session_state.disclaimer_accepted = False
 if "password_input" not in st.session_state:
     st.session_state.password_input = "" # Initialize password input
+if "custom_api_key" not in st.session_state:
+    st.session_state.custom_api_key = "" # Initialize custom API key state
 
 # --- Initial Screen (Password and Disclaimer - Single Step) ---
 if not st.session_state.disclaimer_accepted:
@@ -64,30 +67,28 @@ st.set_page_config(
     page_title="Asesor Legal Municipal IA - Instituto Libertad",
     page_icon="⚖️",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed" # Changed to "collapsed"
 )
 
-# --- Estilos CSS personalizados (INICIO - CSS MODIFICADO) ---
-# (CSS styles remain unchanged from the previous version)
+# --- Estilos CSS personalizados ---
 st.markdown(
     """
     <style>
-    /* --- Variables de color --- */
+    /* --- Variables de color para fácil modificación --- */
     :root {
-        --primary-color: #004488;
-        --primary-hover-color: #005cb3;
-        --secondary-bg: #f9f9f9;
-        --text-color-primary: #444444;
-        --text-color-secondary: #777777;
-        --accent-color: #CC0000;
-        --sidebar-bg: #f0f2f6;
-        --sidebar-button-hover: #e0e0e0;
-        --sidebar-text: #555555;
-        --typing-dot-color: #aaaaaa; /* Color for typing dots */
+        --primary-color: #004488; /* Dark Blue -  MATCHING WEBSITE HEADER BLUE */
+        --primary-hover-color: #005cb3; /* Lighter Blue for hover */
+        --secondary-bg: #f9f9f9; /* Very light gray - Website background feel */
+        --text-color-primary: #444444; /* Slightly lighter Dark Gray - Body text */
+        --text-color-secondary: #777777; /* Medium Gray - Secondary text */
+        --accent-color: #CC0000; /* Red Accent - Similar to website red */
+        --sidebar-bg: #f0f2f6; /* Light gray for sidebar background */
+        --sidebar-button-hover: #e0e0e0; /* Lighter gray for sidebar button hover */
+        --sidebar-text: #555555; /* Slightly lighter Sidebar text color - Dark gray */
     }
 
     body {
-        background-color: var(--secondary-bg);
+        background-color: var(--secondary-bg); /* Use secondary-bg for body background */
         color: var(--text-color-primary);
         font-family: sans-serif;
         overflow-y: scroll;
@@ -100,11 +101,12 @@ st.markdown(
         to { opacity: 1; }
     }
 
+    /* --- Título Principal con degradado sutil --- */
     .main-title {
         font-size: 2.7em;
         font-weight: bold;
         margin-bottom: 0.1em;
-        color: var(--primary-color);
+        color: var(--primary-color); /* Use primary-color for main title */
         text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
         transition: transform 0.3s ease-in-out;
     }
@@ -112,9 +114,10 @@ st.markdown(
         transform: scale(1.02);
     }
 
+    /* --- Subtítulo con ligera demora en la animación --- */
     .subtitle {
         font-size: 1.2em;
-        color: var(--text-color-secondary);
+        color: var(--text-color-secondary); /* Use text-color-secondary for subtitle */
         margin-bottom: 1.2em;
         opacity: 0;
         animation: slideUp 0.6s ease-out forwards;
@@ -125,11 +128,13 @@ st.markdown(
         to { opacity: 0.7; transform: translateY(0); }
     }
 
+    /* --- Barra lateral --- */
     .sidebar .sidebar-content {
-        background-color: var(--sidebar-bg);
+        background-color: var(--sidebar-bg); /* Light gray sidebar background */
         padding: 1rem;
     }
 
+    /* --- Contenedor de Mensajes con sombra sutil --- */
     .stChatContainer {
         border-radius: 0.7em;
         overflow: hidden;
@@ -153,7 +158,7 @@ st.markdown(
         flex-direction: column;
         transform: translateY(10px);
         opacity: 0;
-        animation: fadeInUp 0.4s ease-out forwards; /* Slightly slower animation */
+        animation: fadeInUp 0.3s ease-out forwards;
         overflow-wrap: break-word;
     }
 
@@ -162,58 +167,45 @@ st.markdown(
         from { opacity: 0; transform: translateY(10px); }
     }
 
+
     .user-message {
-        background-color: #e6e6e6;
+        background-color: #e6e6e6; /* Lighter gray for user messages */
         color: var(--text-color-primary);
         align-self: flex-end;
         border-left: 4px solid var(--accent-color);
         box-shadow: 1px 1px 3px rgba(0,0,0,0.05);
     }
 
-    .assistant-message-container .stChatMessage { /* Target container for animation */
-        align-self: flex-start;
-        width: fit-content; /* Fit content */
-        max-width: 80%; /* Max width */
-        transform: translateY(10px);
-        opacity: 0;
-        animation: fadeInUp 0.4s ease-out forwards;
-    }
-
-    .assistant-message-container .stChatMessage > div:first-child { /* Inner content div */
+    .assistant-message {
         background-color: white; /* White for assistant messages */
         color: var(--text-color-primary);
-        border-radius: 1em; /* Rounded corners */
-        padding: 0.8em 1.2em; /* Padding */
+        align-self: flex-start;
         border-left: 4px solid #cccccc; /* Light gray border */
         box-shadow: 1px 1px 3px rgba(0,0,0,0.08);
         transition: box-shadow 0.3s ease;
-        overflow-wrap: break-word; /* Ensure text wraps */
-        word-wrap: break-word; /* Ensure text wraps */
-        line-height: 1.5;
     }
-    .assistant-message-container .stChatMessage:hover > div:first-child {
+    .assistant-message:hover {
         box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
     }
-
 
     .message-content {
         word-wrap: break-word;
     }
 
-    /* --- Campo de Entrada de Texto --- */
+    /* --- Campo de Entrada de Texto (Bordes suaves y foco animado) --- */
     .stTextInput > div > div > div > input {
-        border: 1.5px solid #cccccc;
+        border: 1.5px solid #cccccc; /* Light gray input border */
         border-radius: 0.5em;
         padding: 0.7em 1em;
         transition: border-color 0.3s ease, box-shadow 0.3s ease;
     }
     .stTextInput > div > div > div > input:focus {
         border-color: var(--primary-color);
-        box-shadow: 0 0 5px rgba(0, 68, 136, 0.5); /* Use RGB of primary color */
+        box-shadow: 0 0 5px rgba(var(--primary-color-rgb), 0.5); /* Needs --primary-color-rgb definition if used */
         outline: none;
     }
 
-    /* --- Botones --- */
+    /* --- Botones (Efecto de elevación y onda más sutil) --- */
     .stButton > button {
         background-color: var(--primary-color);
         color: white;
@@ -236,9 +228,8 @@ st.markdown(
     }
     .stButton > button:focus {
         outline: none;
-        box-shadow: 0 0 0 2px rgba(0, 68, 136, 0.4); /* Use RGB of primary color */
+        box-shadow: 0 0 0 2px rgba(0, 131, 143, 0.4); /* Original color, adjust if needed */
     }
-    /* Ripple effect (optional, kept from original) */
     .stButton > button::before {
         content: '';
         position: absolute;
@@ -258,7 +249,7 @@ st.markdown(
         height: 0%;
     }
 
-    /* --- Contenedor del Logo en la Barra Lateral --- */
+    /* --- Contenedor del Logo en la Barra Lateral (Animación sutil) --- */
     .sidebar-logo-container {
         width: 120px;
         height: 120px;
@@ -272,17 +263,19 @@ st.markdown(
     }
     .sidebar-logo-container:hover {
         transform: rotate(5deg) scale(1.05);
-        border-radius: 50%;
+        border-radius: 50%; /* Make sidebar logo rounded too for consistency */
     }
 
+    /* --- Títulos de la Barra Lateral --- */
     .sidebar .st-bb {
         font-weight: bold;
         margin-bottom: 0.6em;
         color: var(--text-color-primary);
-        border-bottom: 1px solid #dddddd;
+        border-bottom: 1px solid #dddddd; /* Lighter border */
         padding-bottom: 0.4em;
     }
 
+    /* --- Botones de la Barra Lateral (Más sutiles) --- */
     .sidebar .stButton > button {
         background-color: transparent;
         color: var(--text-color-primary);
@@ -298,14 +291,16 @@ st.markdown(
         transform: translateX(1px);
     }
     .sidebar .stButton > button:focus {
-        background-color: rgba(0, 68, 136, 0.1); /* Use RGB of primary color */
+        background-color: rgba(0, 131, 143, 0.1); /* Original color, adjust if needed */
     }
 
+    /* --- Separadores más ligeros --- */
     hr {
-        border-top: 1px solid #dddddd;
+        border-top: 1px solid #dddddd; /* Lighter hr color */
         margin: 1em 0;
     }
 
+    /* --- Enlaces en la Barra Lateral --- */
     .sidebar a {
         color: var(--primary-color);
         text-decoration: none;
@@ -315,6 +310,7 @@ st.markdown(
         color: var(--primary-hover-color);
     }
 
+    /* --- Subtítulos de la Barra Lateral --- */
     .sidebar .st-bb + div {
         margin-top: 0.6em;
         margin-bottom: 0.2em;
@@ -322,6 +318,7 @@ st.markdown(
         color: var(--text-color-secondary);
     }
 
+    /* --- Contenedor de Conversaciones Guardadas (Hover sutil) --- */
     .sidebar div[data-testid="stVerticalBlock"] > div > div {
         transition: background-color 0.2s ease-in-out;
         border-radius: 0.4em;
@@ -332,57 +329,72 @@ st.markdown(
         background-color: rgba(0, 0, 0, 0.03);
     }
 
+    /* --- Estilo específico para el botón de "📌" (Más integrado) --- */
     .sidebar .stButton > button:nth-child(3) {
         font-size: 0.7em;
         padding: 0.3em 0.6em;
         border-radius: 0.3em;
-        background-color: rgba(0, 68, 136, 0.1); /* Use RGB of primary color */
+        background-color: rgba(0, 131, 143, 0.1); /* Original color, adjust if needed */
         color: var(--primary-color);
     }
     .sidebar .stButton > button:nth-child(3):hover {
-        background-color: rgba(0, 68, 136, 0.2); /* Use RGB of primary color */
+        background-color: rgba(0, 131, 143, 0.2); /* Original color, adjust if needed */
     }
 
+    /* --- Rounded Logo in Main Title - More Specific --- */
     .stApp .element-container:nth-child(3) div[data-testid="stImage"] > div > img {
-        border-radius: 50%;
-        max-width: 100% !important;
-        height: auto !important;
+        border-radius: 50%; /* Ensure rounded corners */
+        max-width: 100% !important; /* Make sure it respects container width */
+        height: auto !important;    /* Maintain aspect ratio */
     }
 
+    /* --- Rounded Avatar in Chat Messages --- */
     .stChatMessage img {
         border-radius: 50%;
     }
 
-    /* --- Typing Indicator Animation --- */
+    /* --- Assistant Typing Animation --- */
     .assistant-typing {
         display: flex;
         align-items: center;
-        padding: 0.5em 0.8em; /* Reduced padding */
-        margin-left: 2.5rem; /* Align with avatar */
-        margin-bottom: 1.2rem; /* Match message margin */
     }
-    .typing-dot {
-        background-color: var(--typing-dot-color);
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        margin: 0 3px;
-        animation: typing-bounce 1.4s infinite ease-in-out both;
-    }
-    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-    .typing-dot:nth-child(3) { animation-delay: 0s; }
 
-    @keyframes typing-bounce {
-      0%, 80%, 100% { transform: scale(0); }
-      40% { transform: scale(1.0); }
+    .typing-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: var(--text-color-secondary);
+        margin-right: 4px;
+        animation: typing 1.5s infinite;
+    }
+
+    .typing-dot:nth-child(2) {
+        animation-delay: 0.5s;
+    }
+
+    .typing-dot:nth-child(3) {
+        animation-delay: 1s;
+    }
+
+    @keyframes typing {
+        0% {
+            opacity: 0.4;
+            transform: translateY(0);
+        }
+        50% {
+            opacity: 1;
+            transform: translateY(-2px);
+        }
+        100% {
+            opacity: 0.4;
+            transform: translateY(0);
+        }
     }
 
     </style>
     """,
     unsafe_allow_html=True,
 )
-# --- (FIN - CSS MODIFICADO) ---
 
 # --- Disclaimer Status Display in Main Chat Area ---
 if st.session_state.disclaimer_accepted:
@@ -411,89 +423,84 @@ if st.session_state.disclaimer_accepted:
             st.rerun()
 
 # --- Título principal y Subtítulo con Logo ---
-col_logo, col_title = st.columns([0.1, 0.9])
+col_logo, col_title = st.columns([0.1, 0.9]) # Adjust ratios as needed
 with col_logo:
-    st.image("https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo", width=80)
+    st.image("https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo", width=80) # Adjust width as needed
 with col_title:
     st.markdown('<h1 class="main-title">Asesor Legal Municipal IA</h1>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">Instituto Libertad</p>', unsafe_allow_html=True)
 
-# --- API Key ---
-GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+# --- API Key Selection Logic ---
+def get_available_api_keys() -> List[str]:
+    """Checks for configured API keys in st.secrets and returns a list of available key names."""
+    available_keys = []
+    for i in range(1, 6): # Check for up to 5 API keys
+        key_name = f"GOOGLE_API_KEY_{i}"
+        if key_name in st.secrets:
+            available_keys.append(key_name)
+    return available_keys
+
+available_keys = get_available_api_keys()
+selected_key_name = None # Initialize selected_key_name outside if block
+GOOGLE_API_KEY = None # Initialize GOOGLE_API_KEY outside if block
+
+if not available_keys and not st.session_state.custom_api_key: # Check for custom key too
+    st.error("No API keys configured in st.secrets y no se ha ingresado una clave personalizada. Por favor configure al menos una API key (GOOGLE_API_KEY_1, GOOGLE_API_KEY_2, etc.) o ingrese una clave personalizada en la barra lateral. La aplicación no puede ejecutarse.", icon="🚨")
+    st.stop() # Stop execution if no API keys are found
+
+if st.session_state.custom_api_key: # Use custom API key if provided
+    GOOGLE_API_KEY = st.session_state.custom_api_key
+    selected_key_name = "Clave Personalizada" # Indicate custom key is used
+else: # Fallback to random selection from st.secrets
+    selected_key_name = random.choice(available_keys) # Randomly select an API key name
+    GOOGLE_API_KEY = st.secrets[selected_key_name] # Access the selected API key
+
 genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash') # Adjusted model name based on availability
+model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
 
 # --- Funciones para cargar y procesar archivos ---
 
-# Usar ruta relativa para la carpeta de datos
-script_dir = os.path.dirname(__file__) if "__file__" in locals() else os.getcwd() # Handle interactive environments
+# Usar ruta relativa para la carpeta de datos (más portable)
+script_dir = os.path.dirname(__file__)
 DATABASE_DIR = os.path.join(script_dir, "data")
 
-# Manual caching logic based on file modification times
-def load_and_cache_database_files(directory: str) -> Dict[str, str]:
-    """
-    Loads content of all .txt files in the directory.
-    Uses session_state for caching and reloads if files change (based on mtime).
-    """
-    current_signature = ""
-    file_details = [] # Store (filename, mtime) tuples
-
+@st.cache_data(show_spinner=False, persist="disk", max_entries=10) # Caching to load files only once, added max_entries
+def load_database_files_cached(directory: str) -> Dict[str, str]:
+    """Carga y cachea el contenido de todos los archivos .txt en el directorio, invalidando el caché si los archivos cambian."""
+    file_contents = {}
     if not os.path.exists(directory):
         st.warning(f"Directorio de base de datos no encontrado: {directory}")
-        return {} # Return empty if dir doesn't exist
+        return file_contents
 
-    try:
-        file_list = sorted([f for f in os.listdir(directory) if f.endswith(".txt")])
-        for filename in file_list:
-            filepath = os.path.join(directory, filename)
-            mtime = os.path.getmtime(filepath)
-            file_details.append((filename, mtime))
+    file_list = sorted([f for f in os.listdir(directory) if f.endswith(".txt")])
+    cache_key = hashlib.md5(str(file_list).encode()).hexdigest() # Using filenames for cache key
 
-        # Create a signature based on filenames and modification times
-        current_signature = hashlib.md5(str(file_details).encode()).hexdigest()
+    if "database_cache_key" in st.session_state and st.session_state.database_cache_key == cache_key and st.session_state.database_files:
+        return st.session_state.database_files # Return cached data if key is the same
 
-    except Exception as e:
-        st.error(f"Error al verificar los archivos en '{directory}': {e}")
-        # If we can't check files, assume cache is invalid
-        current_signature = f"error_{time.time()}" # Unique signature on error
-
-    # Check if signature matches and data exists in session state
-    if ("database_signature" in st.session_state and
-            st.session_state.database_signature == current_signature and
-            "database_files" in st.session_state):
-        return st.session_state.database_files # Return cached data
-
-    # If signature mismatch or no data, reload
-    st.session_state.database_files = {} # Reset cache
-    loaded_files_count = 0
-    for filename in file_list: # Use the list from earlier check
+    st.session_state.database_files = {} # Reset in-memory cache before reloading
+    for filename in file_list:
         filepath = os.path.join(directory, filename)
         try:
             with open(filepath, "r", encoding="utf-8") as f:
-                st.session_state.database_files[filename] = f.read()
-                loaded_files_count += 1
+                st.session_state.database_files[filename] = f.read() # Store in session_state cache
         except Exception as e:
             st.error(f"Error al leer el archivo {filename}: {e}")
 
-    st.session_state.database_signature = current_signature # Update signature
-    # Optionally show a message on reload
-    if loaded_files_count > 0:
-        pass # Avoid showing toast too often
+    st.session_state.database_cache_key = cache_key # Update cache key
     return st.session_state.database_files
 
-# --- Helper functions ---
-def load_file_content(uploaded_file) -> str:
-    """Loads the content of an uploaded file (.txt)."""
+def load_file_content(filepath: str) -> str:
+    """Carga el contenido de un archivo .txt."""
     try:
-        if uploaded_file.name.lower().endswith(".txt"):
-            stringio = BytesIO(uploaded_file.getvalue())
-            string_data = stringio.read().decode('utf-8', errors='replace')
-            return string_data
+        if filepath.lower().endswith(".txt"):
+            with open(filepath, "r", encoding="utf-8") as f:
+                return f.read()
         else:
-            st.error(f"Tipo de archivo no soportado: {uploaded_file.name}")
+            st.error(f"Tipo de archivo no soportado: {filepath}")
             return ""
     except Exception as e:
-        st.error(f"Error al leer el archivo adjunto {uploaded_file.name}: {e}")
+        st.error(f"Error al leer el archivo {filepath}: {e}")
         return ""
 
 def get_file_description(filename: str) -> str:
@@ -501,132 +508,122 @@ def get_file_description(filename: str) -> str:
     name_parts = filename.replace(".txt", "").split("_")
     return " ".join(word.capitalize() for word in name_parts)
 
-# --- Prompt Modificado ---
+def discover_and_load_files(directory: str) -> Dict[str, str]:
+    """Descubre y carga todos los archivos .txt en un directorio.""" # Updated description
+    file_contents = {}
+    if not os.path.exists(directory):
+        st.warning(f"Directorio de base de datos no encontrado: {directory}")
+        return file_contents
+
+    for filename in os.listdir(directory):
+        if filename.endswith(".txt"): # Only process .txt files
+            filepath = os.path.join(directory, filename)
+            file_contents[filename] = load_file_content(filepath)
+    return file_contents
+
+
+# --- Prompt mejorado MODIFICADO para enviar TODOS los documentos ---
 def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, query: str) -> str:
-    """Crea el prompt para el modelo, incluyendo información de la base de datos y archivos adjuntos, con reglas estrictas sobre el Manual de Concejales."""
+    """Crea el prompt para el modelo, incluyendo TODA la información de la base de datos y archivos adjuntos."""
     prompt_parts = [
         "Eres un asesor legal virtual altamente especializado en **derecho municipal de Chile**, con un enfoque particular en asistir a alcaldes y concejales. Tu experiencia abarca una amplia gama de temas relacionados con la administración y normativa municipal chilena.",
         "Tu objetivo principal es **responder directamente a las preguntas del usuario de manera precisa y concisa**, siempre **citando la fuente legal o normativa** que respalda tu respuesta. **Prioriza el uso de un lenguaje claro y accesible, evitando jerga legal compleja, para que la información sea fácilmente comprensible para concejales y alcaldes, incluso si no tienen formación legal.**",
-        "**MANUAL DE CONCEJALES Y CONCEJALAS (USO EXCLUSIVO COMO CONTEXTO GENERAL Y CONOCIMIENTO BASE - PROHIBIDO CITARLO):**",
-        "Se te proporciona un documento extenso llamado 'MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM'. **Utiliza este documento ÚNICAMENTE como contexto general y para integrar su contenido a tu conocimiento base sobre el marco del derecho municipal chileno y las funciones de los concejales.** Considera la información de este manual como parte de tu 'entrenamiento' o 'conocimiento general'.",
-        "**REGLA ABSOLUTA: ESTÁ ESTRICTAMENTE PROHIBIDO CITAR este manual en tus respuestas. NO DEBES MENCIONAR su nombre ('MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM') ni hacer referencia explícita a ninguna de sus partes o puntos. Cuando uses el conocimiento derivado de este manual, debes presentarlo como parte de tu conocimiento general de derecho municipal chileno y citar la ley o norma general pertinente (ej. Ley Orgánica Constitucional de Municipalidades), NUNCA el manual.**",
-        "**INFORMACIÓN DE LA BASE DE DATOS (NORMAS LEGALES ESPECÍFICAS):**"
+        "**MANUAL DE CONCEJALES Y CONCEJALAS (USO EXCLUSIVO COMO CONTEXTO GENERAL):**",
+        "Se te proporciona un documento extenso sobre derecho municipal chileno y funciones de concejales. **Utiliza este documento ÚNICAMENTE como contexto general y para entender el marco del derecho municipal chileno y las funciones de los concejales.  NO debes citar este manual en tus respuestas, ni mencionar su nombre en absoluto.  Úsalo para comprender mejor las preguntas y para identificar las leyes o normativas relevantes a las que aludir en tus respuestas, basándote en tu entrenamiento legal.**",
+        "**INFORMACIÓN DE LA BASE DE DATOS (NORMAS LEGALES):**" # Modificado el título
     ]
 
-    # Include the content of the manual if it exists, clearly labeling it for context only
-    manual_filename = "MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt"
-    manual_content = database_files_content.get(manual_filename, "")
-    if manual_content:
-        prompt_parts.insert(5, f"\n**Contenido del Manual (SOLO PARA TU CONTEXTO INTERNO Y CONOCIMIENTO BASE, NO CITAR NI MENCIONAR):**\n{manual_content}\n---") # Insert manual content after strict rule
-
-    # Include content from other database files (excluding the manual)
-    if database_files_content:
-        prompt_parts.append("\n**Documentos Específicos de la Base de Datos (Puedes citar estos por nombre y artículo/sección):**")
-        found_other_db_files = False
-        for filename, content in database_files_content.items():
-            # Skip the manual here as it's handled separately and forbidden to cite
-            if filename == manual_filename:
-                continue
-            found_other_db_files = True
+    if database_files_content: # Modificado para usar database_files_content directamente
+        for filename, content in database_files_content.items(): # Iterar sobre TODOS los archivos
+            if filename == "MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt":
+                continue # Exclude manual from this section, it's already handled above
             description = get_file_description(filename)
+            # Modified line to remove .txt from filename in prompt
             prompt_parts.append(f"\n**{description} ({filename.replace('.txt', '')}):**\n{content}\n")
-        if not found_other_db_files:
-            prompt_parts.append("No se encontraron otros documentos específicos en la base de datos.\n")
-
     else:
-        prompt_parts.append("No se ha cargado información de la base de datos de normas legales.\n")
+        prompt_parts.append("No se ha cargado información de la base de datos.\n") # Modificado el mensaje
 
-    # Include uploaded data
-    prompt_parts.append("**INFORMACIÓN ADICIONAL PROPORCIONADA POR EL USUARIO (Puedes citar estos archivos por nombre):**")
+    prompt_parts.append("**INFORMACIÓN ADICIONAL PROPORCIONADA POR EL USUARIO:**")
     prompt_parts.append(uploaded_data if uploaded_data else "No se proporcionó información adicional.\n")
 
-    prompt_parts.extend([
-        "**IMPORTANTE:** Antes de responder, analiza cuidadosamente la pregunta del usuario para determinar si se relaciona específicamente con:",
-        "    a) **Documentos específicos de la base de datos** (excluyendo el manual prohibido).",
-        "    b) **Información adicional proporcionada por el usuario**.",
-        "    c) **Derecho municipal general** (donde usarás tu conocimiento base, incluyendo el contexto del manual prohibido, pero citando la ley general).",
-
+    prompt_parts.extend([ # Usamos extend para añadir múltiples líneas de una vez
+        "**IMPORTANTE:** Antes de responder, analiza cuidadosamente la pregunta del usuario para determinar si se relaciona específicamente con la **base de datos de normas legales**, con la **información adicional proporcionada por el usuario**, o con el **derecho municipal general**, **utilizando tu entrenamiento legal en derecho municipal chileno para entender el trasfondo y las figuras jurídicas involucradas en la pregunta.**",
         """
-*   **Si la pregunta se relaciona con Documentos Específicos de la Base de Datos (excluyendo el manual):** Utiliza la información de esos documentos como tu principal fuente. **Siempre cita el nombre del documento específico de la base de datos y el artículo, sección o norma pertinente que justifica tu respuesta (ej. "Artículo 25 del Reglamento del Concejo Municipal").** Indica claramente en tu respuesta que estás utilizando información de ese documento específico.
-*   **Si la pregunta se relaciona con la información adicional proporcionada por el usuario:** Utiliza esa información como tu principal fuente. **Siempre cita la parte específica de la información adicional que justifica tu respuesta, mencionando el nombre del archivo adjunto (ej. "Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt'").** Indica claramente en tu respuesta que estás utilizando información proporcionada por el usuario y el documento específico.
-*   **Si la pregunta es sobre otros aspectos del derecho municipal chileno:** Utiliza tu conocimiento general en la materia, basado en tu entrenamiento legal **(el cual incluye la comprensión del contexto proporcionado por el manual prohibido, pero SIN mencionarlo)**. **Siempre cita la norma legal general del derecho municipal chileno que justifica tu respuesta (ej. "Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades").** Indica claramente en tu respuesta que estás utilizando tu conocimiento general de derecho municipal chileno y la norma general. **NUNCA digas 'Según el manual...' o algo similar.**
+*   **Si la pregunta se relaciona con la base de datos de normas legales:** Utiliza la información de la base de datos como tu principal fuente para responder. **Siempre cita el artículo, sección o norma específica de la base de datos que justifica tu respuesta. Indica claramente en tu respuesta que estás utilizando información de la base de datos y el documento específico.**  Menciona el nombre del documento y la parte pertinente (ej. "Artículo 25 del Reglamento del Concejo Municipal").
+*   **Si la pregunta se relaciona con la información adicional proporcionada:** Utiliza esa información como tu principal fuente. **Siempre cita la parte específica de la información adicional que justifica tu respuesta (ej. "Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt'"). Indica claramente en tu respuesta que estás utilizando información proporcionada por el usuario y el documento específico.**
+*   **Si la pregunta es sobre otros aspectos del derecho municipal chileno:** Utiliza tu conocimiento general en la materia, basado en tu entrenamiento legal. **Siempre cita la norma legal general del derecho municipal chileno que justifica tu respuesta (ej. "Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades"). Indica claramente en tu respuesta que estás utilizando tu conocimiento general de derecho municipal chileno y la norma general.**
         """,
         "Esta es una herramienta creada por y para el Instituto Libertad por Aldo Manuel Herrera Hernández.",
         "**Metodología LegalDesign:**",
         """
 *   **Claridad y Concisión:** Responde de manera directa y al grano. Evita rodeos innecesarios.
-*   **Estructura:** Organiza las respuestas con encabezados, viñetas o listas numeradas.
-*   **Lenguaje sencillo:** Usa lenguaje accesible, manteniendo precisión legal.
+*   **Estructura:** Organiza las respuestas con encabezados, viñetas o listas numeradas para facilitar la lectura y comprensión, especialmente si hay varios puntos en la respuesta.
+*   **Visualizaciones (si es posible):** Aunque textual, piensa en cómo la información podría representarse visualmente para mejorar la comprensión (por ejemplo, un flujo de proceso mentalmente).
+*   **Ejemplos:**  Si es pertinente, incluye ejemplos prácticos y sencillos para ilustrar los conceptos legales.
+*   **Lenguaje sencillo:** Utiliza un lenguaje accesible para personas sin formación legal especializada, pero manteniendo la precisión legal.
         """,
         "**Instrucciones específicas:**",
         """
-*   Comienza tus respuestas con un **breve resumen conciso en una frase inicial.**
-*   Luego, **desarrolla la respuesta completa y detallada**, proporcionando análisis legal y **citando SIEMPRE la fuente normativa específica APROPIADA (ley general, documento específico de la base de datos (NO EL MANUAL), o archivo adjunto).**
-*   **RECUERDA LA REGLA ABSOLUTA: NUNCA CITAR NI MENCIONAR EL 'MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM'. Trata su contenido como conocimiento base y cita la ley general correspondiente cuando uses esa información.**
-*   **Si la pregunta se relaciona con el funcionamiento interno del Concejo (sesiones, tablas, reglamento, etc.):** Indica que las reglas específicas varían y se encuentran en el Reglamento Interno de cada municipalidad. Basa tu respuesta en tu conocimiento general (leyes generales, contexto del manual prohibido), pero **advierte SIEMPRE sobre la necesidad de consultar el Reglamento Interno específico.** Cita la ley general aplicable (ej. LOCM), no el manual.
-*   **Manejo de Información Faltante:**
-    *   Si la información NO está en los **documentos específicos de la base de datos (excluyendo el manual)**: "Según los documentos específicos disponibles en la base de datos, no puedo responder a esta pregunta."
-    *   Si la información NO está en la **información adicional proporcionada**: "Según la información adicional proporcionada, no puedo responder a esta pregunta."
-    *   Si la información NO está en tu **conocimiento general de derecho municipal chileno (incluyendo el contexto del manual prohibido)**: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."
-*   **REITERACIÓN CRÍTICA: SIEMPRE CITA LA FUENTE NORMATIVA ADECUADA. NUNCA, BAJO NINGUNA CIRCUNSTANCIA, MENCIONES O CITES DIRECTAMENTE EL MANUAL DE CONCEJALES.**
+*   Comienza tus respuestas con un **breve resumen conciso de la respuesta en una frase inicial.**
+*   Luego, **desarrolla la respuesta de manera completa y detallada**, proporcionando un análisis legal **citando siempre la fuente normativa específica.** **NUNCA CITES EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO DIRECTAMENTE NI ALUDAS A ÉL POR NINGÚN MEDIO.**
+    *   **Prioriza la información de la base de datos de normas legales** cuando la pregunta se refiera específicamente a este documento. **Cita explícitamente el documento y la parte relevante (artículo, sección, etc.).**
+    *   **Luego, considera la información adicional proporcionada por el usuario** si es relevante para la pregunta. **Cita explícitamente el documento adjunto y la parte relevante.**
+    *   Para preguntas sobre otros temas de derecho municipal chileno, utiliza tu conocimiento general, pero sé conciso y preciso. **Cita explícitamente la norma general del derecho municipal chileno.**
+*   **Si la pregunta se relaciona con el funcionamiento interno del Concejo Municipal, como sesiones, tablas, puntos, o reglamento interno, y para responder correctamente se necesita información específica sobre reglamentos municipales, indica lo siguiente, basado en tu entrenamiento legal:** "Las normas sobre el funcionamiento interno del concejo municipal, como sesiones, tablas y puntos, se encuentran reguladas principalmente en el Reglamento Interno de cada Concejo Municipal.  Por lo tanto, **las reglas específicas pueden variar significativamente entre municipalidades.**  Mi respuesta se basará en mi entrenamiento en derecho municipal chileno y las normas generales que rigen estas materias, **pero te recomiendo siempre verificar el Reglamento Interno específico de tu municipalidad para obtener detalles precisos.**"  **Si encuentras información relevante en tu entrenamiento legal sobre el tema, proporciona una respuesta basada en él, pero siempre incluyendo la advertencia sobre la variabilidad entre municipalidades.**
+*   **Si la información para responder la pregunta no se encuentra en la base de datos de normas legales proporcionada, responde de forma concisa: "Según la información disponible en la base de datos, no puedo responder a esta pregunta."**
+*   **Si la información para responder la pregunta no se encuentra en la información adicional proporcionada, responde de forma concisa: "Según la información adicional proporcionada, no puedo responder a esta pregunta."**
+*   **Si la información para responder la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
+*   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS. NUNCA MENCIONES NI CITES DIRECTAMENTE EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO.**
         """,
-        "**Ejemplos de respuestas esperadas (con resumen y citación - SIN CITAR EL MANUAL, usando conocimiento base para citar leyes generales o documentos específicos):**",
+        "**Ejemplos de respuestas esperadas (con resumen y citación - SIN MANUAL, BASADO EN ENTRENAMIENTO LEGAL):**",
         """
 *   **Pregunta del Usuario:** "¿Cuáles son las funciones del concejo municipal?"
-    *   **Respuesta Esperada:** "Resumen: Las funciones principales del concejo municipal son normativas, fiscalizadoras y resolutivas.
-        Desarrollo: Efectivamente, el concejo municipal tiene asignadas funciones de carácter normativo, fiscalizador y resolutivo, entre otras. Estas se encuentran detalladas principalmente en la Ley Orgánica Constitucional de Municipalidades (Por ejemplo, ver artículo 79 de la Ley N° 18.695, Orgánica Constitucional de Municipalidades)." *(Nota: Aquí usaste tu conocimiento base, informado por el manual, para encontrar y citar la LOCM)*.
+    *   **Respuesta Esperada:** "Resumen: Las funciones del concejo municipal son normativas, fiscalizadoras y representativas.
+        Desarrollo:  Efectivamente, las funciones del concejo municipal se clasifican en normativas, fiscalizadoras y representativas (Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades)."
 *   **Pregunta del Usuario:** "¿Qué dice el artículo 25 sobre las citaciones a las sesiones en el Reglamento del Concejo Municipal?"
-    *   **Respuesta Esperada:** "Resumen: El artículo 25 del Reglamento del Concejo Municipal establece los plazos y formalidades para las citaciones a sesiones.
-        Desarrollo: Así es, consultando la base de datos, el artículo 25 del documento 'Reglamento del Concejo Municipal' detalla los plazos y formalidades que deben seguirse al realizar citaciones tanto para sesiones ordinarias como extraordinarias (Artículo 25 del Reglamento del Concejo Municipal)." *(Nota: Cita directa del documento específico permitido)*.
+    *   **Respuesta Esperada:** "Resumen: El artículo 25 del Reglamento del Concejo Municipal establece los plazos y formalidades para las citaciones a sesiones ordinarias y extraordinarias.
+        Desarrollo:  Así es, el artículo 25 del Reglamento del Concejo Municipal detalla los plazos y formalidades que deben seguirse al realizar citaciones tanto para sesiones ordinarias como extraordinarias (Artículo 25 del Reglamento del Concejo Municipal)."
 *   **Pregunta del Usuario:** (Adjunta un archivo con jurisprudencia sobre transparencia municipal) "¿Cómo se aplica esta jurisprudencia en el concejo?"
-    *   **Respuesta Esperada:** "Resumen: La jurisprudencia adjunta establece criterios sobre publicidad y acceso a la información, relevantes para la transparencia del concejo.
-        Desarrollo: Correcto, la jurisprudencia que adjuntas en el archivo 'Sentencia_Rol_1234-2023.txt' define criterios importantes sobre la publicidad de las actuaciones del concejo y el acceso a la información pública municipal. Estos criterios deben ser considerados para asegurar la transparencia (Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt')." *(Nota: Cita directa del archivo adjunto)*.
+    *   **Respuesta Esperada:** "Resumen: La jurisprudencia adjunta establece criterios sobre publicidad y acceso a la información pública municipal, relevantes para la transparencia del concejo.
+        Desarrollo:  Correcto, la jurisprudencia que adjuntas en 'Sentencia_Rol_1234-2023.txt' define criterios importantes sobre la publicidad de las sesiones del concejo y el acceso a la información pública municipal. Estos criterios deben ser considerados para asegurar la transparencia en todas las actuaciones del concejo (Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt')."
 *   **Pregunta del Usuario:** "¿Cómo se define la tabla de una sesión del concejo municipal?"
-    *   **Respuesta Esperada:** "Resumen: La tabla de una sesión es el listado de materias a tratar, generalmente fijada por el alcalde según las normas del reglamento interno.
-        Desarrollo: La definición y procedimiento exacto para la tabla de sesiones se encuentran regulados en el Reglamento Interno de cada Concejo Municipal, por lo que los detalles pueden variar entre municipalidades. Basándome en mi conocimiento general del derecho municipal chileno, la tabla es el listado de temas a tratar en una sesión, cuya fijación suele corresponder al alcalde, siguiendo las pautas de la ley y el reglamento. La Ley Orgánica de Municipalidades establece principios generales sobre las sesiones (Ver artículos 81 y siguientes de la Ley N° 18.695). **Es fundamental verificar el Reglamento Interno específico de tu municipalidad para conocer las reglas precisas.**" *(Nota: Usa conocimiento general, cita la LOCM, advierte sobre el reglamento interno, NO cita el manual)*.
+    *   **Respuesta Esperada:** "Resumen: La tabla de una sesión del concejo municipal es el listado de temas a tratar en la sesión, fijada por el alcalde.
+        Desarrollo: Las normas sobre la tabla de sesiones se encuentran en el Reglamento Interno de cada Concejo Municipal, por lo que pueden variar.  Basándome en mi entrenamiento en derecho municipal chileno, la tabla de una sesión se define como el listado de los temas específicos que serán tratados en una sesión del concejo, y su fijación es responsabilidad del alcalde. **Es importante verificar el Reglamento Interno de tu municipalidad, ya que los detalles de este proceso pueden variar entre municipios.**"
         """,
         "**Historial de conversación:**"
     ])
 
     # Añadir historial de conversación
-    for msg in st.session_state.messages[:-1]: # Exclude the latest user message which is the current query
-        role = "Usuario" if msg["role"] == "user" else "Asistente"
-        prompt_parts.append(f"{role}: {msg['content']}\n")
+    for msg in st.session_state.messages[:-1]:
+        if msg["role"] == "user":
+            prompt_parts.append(f"Usuario: {msg['content']}\n")
+        else:
+            prompt_parts.append(f"Asistente: {msg['content']}\n")
 
     prompt_parts.append(f"**Pregunta actual del usuario:** {query}")
 
     return "\n".join(prompt_parts)
-# --- (FIN - Prompt Modificado) ---
-
 
 # --- Inicializar el estado para los archivos ---
 if "database_files" not in st.session_state:
     st.session_state.database_files = {}
-if "database_signature" not in st.session_state:
-    st.session_state.database_signature = None
 if "uploaded_files_content" not in st.session_state:
     st.session_state.uploaded_files_content = ""
+if "database_cache_key" not in st.session_state:
+    st.session_state.database_cache_key = None
 
 # --- Carga inicial de archivos ---
 def load_database_files_on_startup():
-    """Carga/verifica los archivos de la base de datos al inicio."""
-    files_data = load_and_cache_database_files(DATABASE_DIR)
-    st.session_state.database_files = files_data
-    # Count files excluding the manual if present
-    manual_filename = "MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt"
-    db_file_count = len([f for f in files_data if f != manual_filename])
-    context_file_present = 1 if manual_filename in files_data else 0
-    return db_file_count, context_file_present
+    """Carga todos los archivos de la base de datos al inicio."""
+    st.session_state.database_files = load_database_files_cached(DATABASE_DIR) # Load/refresh database files
+    return len(st.session_state.database_files)
 
-# Call the loading function
-database_files_loaded_count, context_file_loaded = load_database_files_on_startup()
-
+database_files_loaded_count = load_database_files_on_startup()
 
 # --- Inicializar el estado de la sesión ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    # Modified initial message slightly to reflect the tool's nature
-    st.session_state.messages.append({"role": "assistant", "content": "¡Hola! Soy tu asesor legal IA del Instituto Libertad, especializado en derecho municipal chileno. Mi objetivo es asistirte con información basada en normativas y documentos proporcionados, usando mi conocimiento general para contextualizar. Recuerda que soy una herramienta de apoyo y no reemplazo a un abogado. ¿En qué puedo ayudarte hoy?"})
+    st.session_state.messages.append({"role": "assistant", "content": "¡Hola! Soy tu asesor legal IA especializado en derecho municipal. Esta es una herramienta del Instituto Libertad diseñada para guiar en las funciones de alcalde y concejales, sirviendo como apoyo, pero NO como reemplazo del asesoramiento de un abogado especializado en derecho público. Estoy listo para analizar tus consultas. ¿En qué puedo ayudarte hoy?"})
 
 if "saved_conversations" not in st.session_state:
     st.session_state.saved_conversations = {}
@@ -634,7 +631,6 @@ if "saved_conversations" not in st.session_state:
 if "current_conversation_name" not in st.session_state:
     st.session_state.current_conversation_name = "Nueva Conversación"
 
-# --- Funciones de conversación (unchanged) ---
 def save_conversation(name, messages, pinned=False):
     st.session_state.saved_conversations[name] = {"messages": messages, "pinned": pinned}
 
@@ -655,14 +651,12 @@ def unpin_conversation(name):
     if name in st.session_state.saved_conversations:
         st.session_state.saved_conversations[name]["pinned"] = False
 
-
-# --- Barra lateral (INICIO - MODIFICADO File Uploader and Status) ---
+# --- Barra lateral ---
 with st.sidebar:
     st.markdown('<div class="sidebar-logo-container"></div>', unsafe_allow_html=True)
-    st.header("Gestión y Contexto")
+    st.header("Historial de Conversaciones")
 
-    # --- Disclaimer Status ---
-    disclaimer_status_expander = st.expander("Estado del Disclaimer", expanded=True)
+    disclaimer_status_expander = st.expander("Estado del Disclaimer", expanded=True) # Initially expanded
     with disclaimer_status_expander:
         if st.session_state.disclaimer_accepted:
             st.success("Disclaimer Aceptado", icon="✅")
@@ -671,64 +665,34 @@ with st.sidebar:
                 st.rerun()
         else:
             st.warning("Disclaimer No Aceptado", icon="⚠️")
-            st.markdown("Acepta el Disclaimer para usar el Asesor.")
+            st.markdown("Para usar el Asesor Legal, debes aceptar el Disclaimer.")
 
-    # --- Database Status ---
-    db_status_expander = st.expander("Estado Base de Datos", expanded=True)
-    with db_status_expander:
-        # Display status based on the counts returned by the loading function
-        if database_files_loaded_count > 0:
-            st.success(f"Base de Datos ({database_files_loaded_count} archivos específicos) cargada.", icon="📚")
-        else:
-            st.warning("Archivos específicos de Base de Datos no cargados o vacíos.", icon="⚠️")
+    st.subheader("Estado API Key") # API Key Status Section
+    if selected_key_name:
+        st.success(f"Usando API Key: {selected_key_name}", icon="🔑") # Display selected API key
+    else:
+        st.warning("No se está usando API Key (Error)", icon="⚠️")
 
-        if context_file_loaded > 0:
-            st.info("Archivo de contexto general (Manual) cargado.", icon="🧠")
-        else:
-             st.warning("Archivo de contexto general (Manual) no encontrado.", icon="⚠️")
+    st.subheader("API Key Personalizada (Opcional)") # Custom API Key Input
+    custom_api_key_input = st.text_input("Ingresa tu API Key personalizada:", type="password", value=st.session_state.custom_api_key, help="Si deseas usar una API Key diferente a las configuradas en st.secrets, puedes ingresarla aquí. Esto tiene prioridad sobre las API Keys de st.secrets.")
+    if custom_api_key_input != st.session_state.custom_api_key:
+        st.session_state.custom_api_key = custom_api_key_input
+        st.rerun() # Rerun to apply the new API key
 
-        st.caption(f"Buscando en: `{DATABASE_DIR}`")
+    st.subheader("Cargar Datos Adicionales")
+    uploaded_files = st.file_uploader("Adjuntar archivos adicionales (.txt)", type=["txt"], help="Puedes adjuntar archivos .txt adicionales para que sean considerados en la respuesta.", accept_multiple_files=True) # Updated to only accept .txt
+    if uploaded_files:
+        st.session_state.uploaded_files_content = ""
+        for uploaded_file in uploaded_files:
+            try:
+                content = load_file_content(uploaded_file.name) # Pass filename for correct reading
+                st.session_state.uploaded_files_content += content + "\n\n"
+            except Exception as e:
+                st.error(f"Error al leer el archivo adjunto {uploaded_file.name}: {e}")
 
-        # Add a button to manually trigger a refresh check
-        if st.button("Refrescar Base de Datos", key="refresh_db"):
-            load_database_files_on_startup() # Re-run the loading/checking function
-            st.rerun() # Rerun the app to reflect potential changes
-
-    # --- File Uploader ---
-    upload_expander = st.expander("Cargar Datos Adicionales", expanded=False)
-    with upload_expander:
-        uploaded_files = st.file_uploader(
-            "Adjuntar archivos .txt",
-            type=["txt"],
-            help="Adjunta archivos .txt con información adicional (jurisprudencia, dictámenes, etc.).",
-            accept_multiple_files=True,
-            key="file_uploader" # Add a key for stability
-        )
-        if uploaded_files:
-            st.session_state.uploaded_files_content = ""
-            loaded_count = 0
-            st.markdown("**Archivos adjuntados:**")
-            for uploaded_file in uploaded_files:
-                try:
-                    content = load_file_content(uploaded_file)
-                    if content:
-                        st.session_state.uploaded_files_content += f"--- INICIO ARCHIVO: {uploaded_file.name} ---\n{content}\n--- FIN ARCHIVO: {uploaded_file.name} ---\n\n"
-                        st.success(f"`{uploaded_file.name}` ✓", icon="📄")
-                        loaded_count += 1
-                    else:
-                         st.error(f"`{uploaded_file.name}` ✗ (Error lectura)", icon="⚠️")
-                except Exception as e:
-                    st.error(f"Error procesando {uploaded_file.name}: {e}")
-            if loaded_count > 0:
-                 st.caption(f"{loaded_count} archivo(s) procesado(s).")
-
-        if st.session_state.uploaded_files_content:
-             if st.button("Limpiar archivos adjuntos", key="clear_uploads"):
-                st.session_state.uploaded_files_content = ""
-                st.rerun()
-
-    st.markdown("---")
-    st.header("Historial de Conversaciones")
+    if st.button("Limpiar archivos adicionales"):
+        st.session_state.uploaded_files_content = ""
+        st.rerun()
 
     new_conversation_name = st.text_input("Título conversación:", value=st.session_state.current_conversation_name)
     if new_conversation_name != st.session_state.current_conversation_name:
@@ -736,211 +700,154 @@ with st.sidebar:
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("Guardar", help="Guardar la conversación actual"):
-            # Limit saved conversations logic (unchanged)
+        if st.button("Guardar"):
             if len(st.session_state.saved_conversations) >= 5:
-                unpinned_conversations = [name for name, data in st.session_state.saved_conversations.items() if not data.get('pinned', False)]
+                unpinned_conversations = [name for name, data in st.session_state.saved_conversations.items() if not data['pinned']]
                 if unpinned_conversations:
-                    oldest_unpinned = unpinned_conversations[0] # Simplistic removal
+                    oldest_unpinned = min(st.session_state.saved_conversations, key=lambda k: st.session_state.saved_conversations[k]['messages'][0]['content'] if st.session_state.saved_conversations[k]['messages'] else "")
                     delete_conversation(oldest_unpinned)
-                    st.toast(f"Límite alcanzado. Se eliminó '{oldest_unpinned}'.", icon="🗑️")
-
-            messages_to_save = list(st.session_state.messages)
-            save_conversation(st.session_state.current_conversation_name, messages_to_save, st.session_state.saved_conversations.get(st.session_state.current_conversation_name, {}).get('pinned', False))
+            st.session_state.messages_before_save = list(st.session_state.messages)
+            save_conversation(st.session_state.current_conversation_name, st.session_state.messages_before_save)
             st.success("Conversación guardada!", icon="💾")
-            time.sleep(1)
             st.rerun()
-
     with col2:
-        if st.button("Borrar Chat", key="clear_chat_sidebar", help="Limpiar la conversación actual"):
-            if st.session_state.messages:
-                 initial_message = st.session_state.messages[0]
-                 st.session_state.messages = [initial_message]
-            else: # Re-initialize if empty
-                 st.session_state.messages = [{"role": "assistant", "content": "¡Hola! Soy tu asesor legal IA del Instituto Libertad..."}]
-            st.session_state.current_conversation_name = "Nueva Conversación"
+        if st.button("Borrar Chat", key="clear_chat_sidebar"):
+            st.session_state.messages = [st.session_state.messages[0]]
             st.rerun()
-
     with col3:
         is_pinned = st.session_state.saved_conversations.get(st.session_state.current_conversation_name, {}).get('pinned', False)
-        pin_icon = "📌" if is_pinned else "➖"
-        pin_tooltip = "Desfijar conversación" if is_pinned else "Fijar conversación"
-        if st.button(pin_icon, key="pin_button", help=pin_tooltip):
+        if st.button("📌" if not is_pinned else " 📌 ", key="pin_button"):
             if st.session_state.current_conversation_name in st.session_state.saved_conversations:
                 if is_pinned:
                     unpin_conversation(st.session_state.current_conversation_name)
-                    st.toast("Conversación desfijada.", icon=pin_icon)
                 else:
                     pin_conversation(st.session_state.current_conversation_name)
-                    st.toast("Conversación fijada.", icon="📌")
-                time.sleep(1)
                 st.rerun()
-            else:
-                st.warning("Guarda la conversación antes de fijarla.")
 
     st.subheader("Conversaciones Guardadas")
-    sorted_conversations = sorted(
-        st.session_state.saved_conversations.items(),
-        key=lambda item: (not item[1].get('pinned', False), item[0])
-    )
-
-    if not sorted_conversations:
-        st.caption("No hay conversaciones guardadas.")
-
-    for name, data in sorted_conversations:
-        pinned_icon = "📌" if data.get('pinned', False) else ""
-        cols = st.columns([0.75, 0.25])
+    for name, data in sorted(st.session_state.saved_conversations.items(), key=lambda item: item[1]['pinned'], reverse=True):
+        cols = st.columns([0.7, 0.2, 0.1])
         with cols[0]:
-            if st.button(f"{pinned_icon} {name}", key=f"load_{name}", help=f"Cargar '{name}'"):
+            if st.button(f"{'📌' if data['pinned'] else ''} {name}", key=f"load_{name}"):
                 load_conversation(name)
+                st.session_state.current_conversation_name = name
                 st.rerun()
         with cols[1]:
-            if st.button("🗑️", key=f"delete_{name}", help=f"Eliminar '{name}'"):
+            if st.button("🗑️", key=f"delete_{name}"):
                 delete_conversation(name)
-                if st.session_state.current_conversation_name == name:
-                    st.session_state.current_conversation_name = "Nueva Conversación"
-                    if st.session_state.messages:
-                         st.session_state.messages = [st.session_state.messages[0]]
                 st.rerun()
 
     st.markdown("---")
     st.header("Acerca de")
-    st.markdown("Este asesor legal virtual fue creado por Aldo Manuel Herrera Hernández para el **Instituto Libertad** y se especializa en asesoramiento en derecho administrativo y municipal de **Chile**.")
-    st.markdown("Se basa en la información de la base de datos (excluyendo el manual para citas directas), archivos adjuntos y su conocimiento general entrenado.")
-    st.markdown("La información proporcionada aquí NO reemplaza el asesoramiento legal profesional.")
+    st.markdown("Este asesor legal virtual fue creado por Aldo Manuel Herrera Hernández para el **Instituto Libertad** y se especializa en asesoramiento en derecho administrativo y municipal de **Chile**, basándose en la información que le proporciones.")
+    st.markdown("Esta herramienta es desarrollada por el **Instituto Libertad**.")
+    st.markdown("La información proporcionada aquí se basa en el contenido de los archivos .txt que cargues como base de datos del reglamento y los archivos adicionales que adjuntes, y no reemplaza el asesoramiento legal profesional.") # Updated description to remove PDF
     st.markdown("---")
     st.markdown("**Instituto Libertad**")
     st.markdown("[Sitio Web](https://www.institutolibertad.cl)")
     st.markdown("[Contacto](mailto:contacto@institutolibertad.cl)")
 
-    # Updated Data Summary
-    st.subheader("Resumen Datos Cargados")
-    if database_files_loaded_count > 0 :
-        st.markdown(f"**Base de Datos Específica:** {database_files_loaded_count} archivo(s) OK.")
-    else:
-         st.markdown("**Base de Datos Específica:** No cargada.")
-
-    if context_file_loaded > 0:
-        st.markdown("**Contexto General (Manual):** 1 archivo OK (no citable).")
-    else:
-        st.markdown("**Contexto General (Manual):** No cargado.")
-
-
+    st.subheader("Datos Cargados")
+    if st.session_state.database_files:
+        st.markdown(f"**Base de Datos:** Se ha cargado información desde {database_files_loaded_count} archivo(s) automáticamente.")
     if st.session_state.uploaded_files_content:
-        uploaded_file_count = st.session_state.uploaded_files_content.count("--- INICIO ARCHIVO:")
-        st.markdown(f"**Archivos Adicionales:** {uploaded_file_count} archivo(s) OK.")
-    else:
-        st.markdown("**Archivos Adicionales:** Ninguno.")
+        uploaded_file_count = 0
+        if uploaded_files: # Check if uploaded_files is defined to avoid errors on initial load
+            uploaded_file_count = len(uploaded_files)
+        st.markdown(f"**Archivos Adicionales:** Se ha cargado información desde {uploaded_file_count} archivo(s).") # Updated description to remove PDF
+    if not st.session_state.database_files and not st.session_state.uploaded_files_content:
+        st.warning("No se ha cargado ninguna base de datos del reglamento ni archivos adicionales.")
+    elif not st.session_state.database_files:
+        st.warning("No se ha encontrado o cargado la base de datos del reglamento automáticamente.")
 
-# --- (FIN - Barra lateral Modificada) ---
-
-
-# --- Área de chat (MODIFICADO para streaming y animación) ---
-if st.session_state.disclaimer_accepted:
-    # Display existing messages
+# --- Área de chat ---
+if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accepted
     for message in st.session_state.messages:
-        if message["role"] == "user":
-            st.markdown(f'<div class="chat-message user-message"><div class="message-content">{message["content"]}</div></div>', unsafe_allow_html=True)
-        else: # Assistant
-             # Use markdown within st.chat_message for better control and avatar
-            with st.chat_message("assistant", avatar="https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo"):
-                # Wrap the content in the styled div for consistency, animation applies to container
-                st.markdown(f'<div class="message-content">{message["content"]}</div>', unsafe_allow_html=True)
+        with st.container():
+            if message["role"] == "user":
+                st.markdown(f'<div class="chat-message user-message"><div class="message-content">{message["content"]}</div></div>', unsafe_allow_html=True)
+            else:
+                with st.chat_message("assistant", avatar="https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo"): # Moved avatar here
+                    st.markdown(f'<div class="message-content">{message["content"]}</div>', unsafe_allow_html=True)
 
-
-    # --- Input field ---
+    # --- Campo de entrada para el usuario ---
     if prompt := st.chat_input("Escribe tu consulta...", key="chat_input"):
-        # Add user message to state
         st.session_state.messages.append({"role": "user", "content": prompt})
 
-        # Display user message immediately with animation
-        st.markdown(f'<div class="chat-message user-message"><div class="message-content">{prompt}</div></div>', unsafe_allow_html=True)
+        # Immediately display user message
+        with st.container():
+            st.markdown(f'<div class="chat-message user-message"><div class="message-content">{prompt}</div></div>', unsafe_allow_html=True)
 
-        # --- Generate and display assistant response ---
-        # Use a container for the typing indicator and the final response
-        response_area = st.container() # Container to hold typing and response
-        with response_area:
-            # 1. Display Typing Indicator within chat_message structure
-            typing_placeholder = st.empty()
-            with typing_placeholder.container():
-                 with st.chat_message("assistant", avatar="https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo"):
-                     st.markdown('<div class="assistant-typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>', unsafe_allow_html=True)
+        # Process query and generate assistant response in a separate container
+        with st.container(): # New container for processing and assistant response
+            # **YA NO ANALIZAMOS LA CONSULTA - ENVIAMOS TODOS LOS ARCHIVOS**
+            # relevant_filenames = analyze_query(prompt, st.session_state.database_files) # REMOVE THIS LINE
+            # relevant_database_data = {filename: st.session_state.database_files[filename] for filename in relevant_filenames} # REMOVE THIS LINE
 
+            # Construir el prompt completo - AHORA CON TODOS LOS ARCHIVOS
+            prompt_completo = create_prompt(st.session_state.database_files, st.session_state.uploaded_files_content, prompt) # MODIFICADO
 
-            # 2. Prepare and Send Prompt
-            current_db_files = load_and_cache_database_files(DATABASE_DIR) # Ensure current data
-            prompt_completo = create_prompt(
-                current_db_files,
-                st.session_state.uploaded_files_content,
-                prompt
-            )
+            with st.chat_message("assistant", avatar="https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo"):
+                message_placeholder = st.empty()
+                full_response = ""
+                is_typing = True  # Indicar que el asistente está "escribiendo"
+                typing_placeholder = st.empty()
+                typing_placeholder.markdown('<div class="assistant-typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>', unsafe_allow_html=True)
 
-            # 3. Stream Response
-            full_response = ""
-            # Placeholder for the streaming response content *within* a chat_message
-            stream_placeholder = st.empty()
+                try:
+                    response = model.generate_content(prompt_completo, stream=True) # Capture the response object
 
-            try:
-                # Start generation stream
-                response_stream = model.generate_content(prompt_completo, stream=True)
+                    # Add summary and detailed response structure
+                    summary_finished = False
+                    detailed_response = ""
+                    full_response_chunks = []
 
-                # Iterate through chunks and update placeholder
-                for chunk in response_stream:
-                    # Handle potential empty chunks or safety blocks
-                    try:
-                        chunk_text = chunk.text
-                        full_response += chunk_text
-                        # Display intermediate response within the assistant message structure
-                        with stream_placeholder.container():
-                             with st.chat_message("assistant", avatar="https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo"):
-                                st.markdown(f'<div class="message-content">{full_response}▌</div>', unsafe_allow_html=True) # Blinking cursor
-                        time.sleep(0.01) # Small delay for visual streaming effect
-
-                    except (ValueError, AttributeError) as e:
-                         # Handle cases where chunk.text might be inaccessible (e.g., safety filters)
-                         # Log the issue if needed: print(f"Skipping chunk due to error: {e}, Chunk: {chunk}")
-                         pass # Continue to the next chunk
+                    for chunk in response: # Iterate over the response object
+                        chunk_text = chunk.text or ""
+                        full_response_chunks.append(chunk_text)
+                        full_response = "".join(full_response_chunks)
 
 
-                # Check for empty response *after* iterating through the stream
-                if not full_response.strip():
-                     # Handle case where the stream completed but produced no usable text
-                    error_message = """
-                    Lo siento, no pude generar una respuesta adecuada. Esto podría deberse a filtros de seguridad o a la naturaleza de la pregunta.
+                        if not summary_finished:
+                            # Basic heuristic to detect summary end (can be improved)
+                            if "\nDesarrollo:" in full_response:
+                                summary_finished = True
+                                message_placeholder.markdown(full_response + "▌") # Show both summary and start of development
+                            else:
+                                message_placeholder.markdown(full_response + "▌") # Still in summary part
+                        else: # After summary, just append
+                             message_placeholder.markdown(full_response + "▌")
 
-                    **Intenta:**
-                    * Reformular tu pregunta.
-                    * Asegurarte de que la pregunta sea clara y específica.
-                    """
-                    full_response = error_message
-                    # Display error message in the final spot
-                    with stream_placeholder.container():
-                        with st.chat_message("assistant", avatar="https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo"):
-                            st.error(f'<div class="message-content">{full_response}</div>', icon="⚠️") # Use st.error for visual distinction
+                        time.sleep(0.015)  # Slightly faster
 
-            except Exception as e:
-                st.error(f"Ocurrió un error al contactar la IA: {e}", icon="🚨")
-                full_response = f"Error: No se pudo obtener respuesta. ({e})"
-                # Display error message in the final spot
-                with stream_placeholder.container():
-                    with st.chat_message("assistant", avatar="https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo"):
-                        st.error(f'<div class="message-content">{full_response}</div>', icon="🚨")
 
-            finally:
-                 # 4. Clear Typing Indicator
-                typing_placeholder.empty()
+                    if not response.candidates: # Check if candidates is empty AFTER stream completion
+                        full_response = """
+                        Lo siento, no pude generar una respuesta adecuada para tu pregunta con la información disponible.
+                        **Posibles razones:**
+                        * La pregunta podría ser demasiado compleja o específica.
+                        * La información necesaria para responder podría no estar en la base de datos actual o en los archivos adjuntos.
+                        * Limitaciones del modelo de IA.
 
-                # 5. Finalize Response Display (remove cursor, ensure container shows final state)
-                # This replaces the streaming content with the final, static message.
-                with stream_placeholder.container():
-                    with st.chat_message("assistant", avatar="https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo"):
-                        st.markdown(f'<div class="message-content">{full_response}</div>', unsafe_allow_html=True) # Final content
+                        **¿Qué puedes intentar?**
+                        * **Reformula tu pregunta:**  Intenta hacerla más simple o más directa.
+                        * **Proporciona más detalles:**  Añade contexto o información clave a tu pregunta.
+                        * **Carga archivos adicionales:**  Si tienes documentos relevantes, adjúntalos para ampliar la base de conocimiento.
+                        * **Consulta fuentes legales adicionales:**  Esta herramienta es un apoyo, pero no reemplaza el asesoramiento de un abogado especializado.
+                        """
+                        st.error("No se pudo generar una respuesta válida. Consulta la sección de ayuda en el mensaje del asistente.", icon="⚠️")
 
-                # 6. Add final response to session state only if it's not just an error placeholder
-                if full_response and not full_response.startswith("Error:"):
-                    st.session_state.messages.append({"role": "assistant", "content": full_response})
-                # If it was an error generated by our code (not the model), don't save it as a valid assistant turn.
+                    typing_placeholder.empty()  # Eliminar "escribiendo..." al finalizar
+                    is_typing = False
+                    message_placeholder.markdown(full_response)
 
-else: # Disclaimer not accepted
-    st.warning("Para usar el Asesor Legal Municipal IA, debes aceptar el Disclaimer (ver barra lateral o mensaje inicial).", icon="⚠️")
-# --- (FIN - Área de Chat Modificada) ---
+
+                except Exception as e:
+                    typing_placeholder.empty()
+                    is_typing = False
+                    st.error(f"Ocurrió un error inesperado al generar la respuesta: {e}. Por favor, intenta de nuevo más tarde.", icon="🚨") # More prominent error icon
+                    full_response = f"Ocurrió un error inesperado: {e}. Por favor, intenta de nuevo más tarde."
+
+                st.session_state.messages.append({"role": "assistant", "content": full_response})
+else: # Disclaimer not accepted, show message instead of chat
+    st.warning("Para usar el Asesor Legal Municipal IA, debes aceptar el Disclaimer en la barra lateral.", icon="⚠️")
