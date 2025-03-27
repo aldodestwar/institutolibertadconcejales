@@ -466,18 +466,31 @@ DATABASE_DIR = os.path.join(script_dir, "data")
 
 @st.cache_data(show_spinner=False, persist="disk", max_entries=10) # Caching to load files only once, added max_entries
 def load_database_files_cached(directory: str) -> Dict[str, str]:
-    """Carga y cachea el contenido de todos los archivos .txt en el directorio, invalidando el caché si los archivos cambian."""
+    """Carga y cachea el contenido de todos los archivos .txt en el directorio, invalidando el caché si los archivos cambian según el hash del contenido."""
     file_contents = {}
     if not os.path.exists(directory):
         st.warning(f"Directorio de base de datos no encontrado: {directory}")
         return file_contents
 
     file_list = sorted([f for f in os.listdir(directory) if f.endswith(".txt")])
-    cache_key = hashlib.md5(str(file_list).encode()).hexdigest() # Using filenames for cache key
+    content_hash = hashlib.sha256()
+    for filename in file_list:
+        filepath = os.path.join(directory, filename)
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                file_content = f.read()
+                content_hash.update(file_content.encode('utf-8')) # Hash the content, not just filenames
+        except Exception as e:
+            st.error(f"Error al leer el archivo {filename} para calcular el hash: {e}")
+            return {} # Return empty dict on error to avoid using potentially incomplete data
 
-    if "database_cache_key" in st.session_state and st.session_state.database_cache_key == cache_key and st.session_state.database_files:
-        return st.session_state.database_files # Return cached data if key is the same
+    current_hash = content_hash.hexdigest()
 
+    if "database_cache_key" in st.session_state and st.session_state.database_cache_key == current_hash and st.session_state.database_files:
+        st.write("✅ Usando base de datos CACHEADA") # Debug print
+        return st.session_state.database_files # Return cached data if hash is the same
+
+    st.write("🔄 Recargando base de datos...") # Debug print
     st.session_state.database_files = {} # Reset in-memory cache before reloading
     for filename in file_list:
         filepath = os.path.join(directory, filename)
@@ -487,7 +500,8 @@ def load_database_files_cached(directory: str) -> Dict[str, str]:
         except Exception as e:
             st.error(f"Error al leer el archivo {filename}: {e}")
 
-    st.session_state.database_cache_key = cache_key # Update cache key
+    st.session_state.database_cache_key = current_hash # Update cache key with content hash
+    st.write("✅ Base de datos RECARGADA y CACHEADA") # Debug print
     return st.session_state.database_files
 
 def load_file_content(filepath: str) -> str:
@@ -685,7 +699,7 @@ with st.sidebar:
         st.session_state.uploaded_files_content = ""
         for uploaded_file in uploaded_files:
             try:
-                content = load_file_content(uploaded_file.name) # Pass filename for correct reading
+                content = load_file_content(uploaded_file) # Pass the file object directly
                 st.session_state.uploaded_files_content += content + "\n\n"
             except Exception as e:
                 st.error(f"Error al leer el archivo adjunto {uploaded_file.name}: {e}")
@@ -750,6 +764,9 @@ with st.sidebar:
     st.subheader("Datos Cargados")
     if st.session_state.database_files:
         st.markdown(f"**Base de Datos:** Se ha cargado información desde {database_files_loaded_count} archivo(s) automáticamente.")
+        if st.button("Recargar Base de Datos", key="refresh_db_button"): # Refresh Database Button
+            database_files_loaded_count = load_database_files_on_startup()
+            st.success("Base de datos recargada.", icon="🔄")
     if st.session_state.uploaded_files_content:
         uploaded_file_count = 0
         if uploaded_files: # Check if uploaded_files is defined to avoid errors on initial load

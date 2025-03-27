@@ -1,0 +1,48 @@
+Codigo Penal Extracto
+**Delitos Vinculados a la Municipalidad, Alcaldes y Concejales según el Código Penal Chileno**
+
+Este texto único estructura los artículos del Código Penal chileno relevantes a delitos vinculados a la municipalidad, alcaldes y concejales, agrupándolos temáticamente para una mejor comprensión.
+
+**I. Delitos Financieros y Patrimoniales que Afectan a la Municipalidad**
+
+* **Artículo 172 (Falsificación de Bonos del Estado, incluyendo Municipales):** Este artículo penaliza la falsificación de bonos emitidos por el Estado, lo cual incluye implícitamente bonos municipales. La sanción es de presidio menor en su grado máximo a presidio mayor en su grado mínimo y multa de veintiuna a veinticinco unidades tributarias mensuales. Este delito afecta directamente las finanzas públicas, incluyendo las municipales, al poner en riesgo la confianza en los instrumentos de deuda emitidos por estas entidades.
+
+* **Artículo 174 (Falsificación de Acciones y Obligaciones Municipales):**  Se centra específicamente en la falsificación de acciones, promesas de acciones, obligaciones u otros títulos emitidos legalmente por municipalidades.  La pena es de presidio menor en sus grados medio a máximo y multa de once a veinte unidades tributarias mensuales para emisiones chilenas, y presidio menor en su grado medio y multa de seis a diez unidades tributarias mensuales para emisiones extranjeras. Este delito atenta directamente contra la capacidad de financiamiento municipal y la fe pública en sus instrumentos financieros.
+
+* **Artículo 238 (Extensión de la Malversación a Fondos Municipales):** Este artículo extiende las disposiciones sobre malversación de caudales públicos a aquellos encargados de fondos, rentas o efectos municipales.  Esto significa que los delitos de malversación aplicables a empleados públicos en general se aplican también a funcionarios municipales que manejan recursos.  La pena se agrava cuando el valor de lo malversado supera las cuatrocientas unidades tributarias mensuales.
+
+* **Artículo 239 (Defraudación que Perjudica a Municipalidades):**  Este artículo penaliza al empleado público que defrauda o consiente la defraudación al Estado, municipalidades o establecimientos públicos.  Las penas varían según el monto defraudado, desde presidio menor en sus grados medio a máximo hasta presidio mayor en sus grados mínimo a medio para defraudaciones superiores a cuatrocientas unidades tributarias mensuales.  Se incluyen multas e inhabilitación absoluta temporal para cargos públicos. Este delito es crucial para la integridad de la gestión municipal, protegiendo los fondos públicos de acciones fraudulentas.
+
+**II. Destino de Multas Municipales**
+
+* **Artículo 60 (Destino de Multas Municipales):**  Establece que el producto de multas, cauciones y comisos derivados de faltas y contravenciones se destina a los fondos de la municipalidad correspondiente al territorio donde se cometieron.  Este artículo es importante para la financiación municipal, ya que define un flujo de ingresos proveniente de sanciones por infracciones menores.
+
+**III. Infracciones y Faltas de Competencia Municipal**
+
+* **Artículo 495 (Faltas Menores Sancionadas con Multa de 1 UTM):**  Este extenso artículo enumera una serie de faltas menores sancionadas con multa de una unidad tributaria mensual. Varias de estas faltas están directamente relacionadas con el ámbito de la gestión municipal y el orden público local, incluyendo:
+    * **Orden Público y Espectáculos:**  Contravenciones a reglas para conservar el orden público, desórdenes en espectáculos públicos.
+    * **Respeto a la Autoridad:**  Falta de respeto a la autoridad pública y funcionarios en ejercicio de sus funciones.
+    * **Ofensas al Pudor y Moralidad:**  Ofensas públicas al pudor.
+    * **Incumplimiento de Reglamentos Municipales:**  Infracciones a reglamentos de policía sobre comercio sexual, espectáculos públicos sin licencia, apertura de establecimientos sin licencia, reglamentos de policía para fondas, cafés, etc., reglamentos de seguridad para construcciones y vías públicas.
+    * **Defraudaciones Menores:**  Defraudación al público en la venta de alimentos por valor inferior a 1 UTM, tenencia de medidas y pesos falsos o no contrastados.
+    * **Daños Menores:**  Daño intencional o negligente en bienes públicos o privados por valor inferior a 1 UTM, aprovechamiento indebido de aguas causando daño menor.
+
+* **Artículo 496 (Faltas Sancionadas con Multa de 1 a 4 UTM):**  Similar al artículo anterior, este artículo enumera faltas sancionadas con una multa mayor, de una a cuatro unidades tributarias mensuales, muchas de las cuales también se relacionan con la gestión municipal:
+    * **Desobediencia a la Autoridad Municipal:**  Falta de obediencia a órdenes particulares de la autoridad.
+    * **Negativa de Auxilio a la Autoridad:**  Negativa a prestar auxilio a la autoridad en calamidades públicas.
+    * **Obstrucción a la Fiscalización Municipal:**  Impedir el ejercicio de funciones fiscalizadoras de inspectores municipales.
+    * **Infracciones a Reglamentos Municipales:**  Infracciones a reglas de policía para abastecimiento de pueblos,  reglamentos de carruajes públicos, reglamentos de policía para posadas, fondas, etc., reglas de policía para elaboración de objetos insalubres, arrojar objetos a la vía pública,  reglamentos sobre juegos y diversiones públicas, reglamentos de caza y pesca.
+    * **Alteración del Orden Público:**  Rondas nocturnas alterando el sosiego público, participación en reuniones ofensivas, riñas en público sin armas, embriaguez molestando a terceros en público.
+    * **Infracciones Sanitarias y de Aseo:**  Arrojar animales muertos en sitios prohibidos, no entregar basuras a la policía de aseo, echar objetos en acequias que causen anegación.
+    * **Infracciones de Construcción y Seguridad:**  Construir chimeneas, estufas u hornos contraviniendo reglamentos, no reparar edificios ruinosos, infringir reglas de seguridad para excavaciones y depósitos en vías públicas, tener objetos peligrosos en balcones y ventanas, arrojar objetos desde balcones a la calle, tirar objetos arrojadizos en lugares públicos.
+    * **Faltas con Moneda y Títulos:** Circular moneda falsa de buena fe después de conocer su falsedad (valor menor a 1 UTM).
+
+* **Artículo 497 (Daños de Ganado en Heredad Ajena):**  Establece multas específicas para dueños de ganado que causen daño en heredades ajenas cerradas, siendo relevante para la gestión municipal en zonas rurales o semi-rurales donde el control de animales y daños a la propiedad privada puede ser una función municipal.
+
+**IV.  Impedimento a la Inscripción de Matrimonio Religioso (Relevancia Menor)**
+
+* **Artículo 389 (Impedimento a Inscripción de Matrimonio Religioso):** Sanciona a quien impide la inscripción de un matrimonio religioso ante el oficial civil.  Si bien menos directamente vinculado a las funciones típicas de alcaldes y concejales, sí involucra al oficial civil, un funcionario municipal clave en el registro civil y, por extensión, en ciertos actos administrativos municipales.
+
+**Conclusión**
+
+Estos artículos del Código Penal delinean un marco legal que protege los recursos municipales, el orden público local y la integridad de la administración municipal.  Si bien no todos los delitos involucran directamente a alcaldes y concejales, sí definen conductas punibles que afectan la gestión municipal y que las autoridades locales, incluyendo alcaldes y concejales, deben contribuir a prevenir y denunciar para el correcto funcionamiento de la municipalidad y el bienestar de la comunidad.  La mayoría de los delitos directamente vinculados a la función municipal se centran en la protección del patrimonio público, la correcta gestión financiera y el mantenimiento del orden y la seguridad dentro del territorio comunal.
