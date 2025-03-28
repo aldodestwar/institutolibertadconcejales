@@ -487,10 +487,8 @@ def load_database_files_cached(directory: str) -> Dict[str, str]:
     current_hash = content_hash.hexdigest()
 
     if "database_cache_key" in st.session_state and st.session_state.database_cache_key == current_hash and st.session_state.database_files:
-        st.write("✅ Usando base de datos CACHEADA") # Debug print
         return st.session_state.database_files # Return cached data if hash is the same
 
-    st.write("🔄 Recargando base de datos...") # Debug print
     st.session_state.database_files = {} # Reset in-memory cache before reloading
     for filename in file_list:
         filepath = os.path.join(directory, filename)
@@ -501,7 +499,6 @@ def load_database_files_cached(directory: str) -> Dict[str, str]:
             st.error(f"Error al leer el archivo {filename}: {e}")
 
     st.session_state.database_cache_key = current_hash # Update cache key with content hash
-    st.write("✅ Base de datos RECARGADA y CACHEADA") # Debug print
     return st.session_state.database_files
 
 def load_file_content(filepath: str) -> str:
@@ -699,7 +696,7 @@ with st.sidebar:
         st.session_state.uploaded_files_content = ""
         for uploaded_file in uploaded_files:
             try:
-                content = load_file_content(uploaded_file) # Pass the file object directly
+                content = load_file_content(uploaded_file.name) # Pass filename for correct reading
                 st.session_state.uploaded_files_content += content + "\n\n"
             except Exception as e:
                 st.error(f"Error al leer el archivo adjunto {uploaded_file.name}: {e}")
@@ -753,9 +750,9 @@ with st.sidebar:
 
     st.markdown("---")
     st.header("Acerca de")
-    st.markdown("Este asesor legal virtual fue creado por Aldo Manuel Herrera Hernández para el **Instituto Libertad** y se especializa en asesoramiento en derecho administrativo y municipal de **Chile**, basándose en el conocimiento que posee.")
+    st.markdown("Este asesor legal virtual fue creado por Aldo Manuel Herrera Hernández para el **Instituto Libertad** y se especializa en asesoramiento en derecho administrativo y municipal de **Chile**, basándose en la información que le proporciones.")
     st.markdown("Esta herramienta es desarrollada por el **Instituto Libertad**.")
-    st.markdown("La información proporcionada aquí se basa en el contenido elegido por abogados del Instituto Libertad. Esta IA **NO** reemplaza el asesoramiento legal profesional.") # Updated description to remove PDF
+    st.markdown("La información proporcionada aquí se basa en el contenido de los archivos .txt que cargues como base de datos del reglamento y los archivos adicionales que adjuntes, y no reemplaza el asesoramiento legal profesional.") # Updated description to remove PDF
     st.markdown("---")
     st.markdown("**Instituto Libertad**")
     st.markdown("[Sitio Web](https://www.institutolibertad.cl)")
