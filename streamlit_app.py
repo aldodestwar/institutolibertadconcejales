@@ -755,7 +755,7 @@ with st.sidebar:
     st.header("Acerca de")
     st.markdown("Este asesor legal virtual fue creado por Aldo Manuel Herrera Hernández para el **Instituto Libertad** y se especializa en asesoramiento en derecho administrativo y municipal de **Chile**, basándose en el conocimiento que posee.")
     st.markdown("Esta herramienta es desarrollada por el **Instituto Libertad**.")
-    st.markdown("La información proporcionada aquí se basa en el contenido elegido por abogados del Instituto Libertad de forma cuidadosa. Esta IA **NO** reemplaza el asesoramiento legal profesional.") # Updated description to remove PDF
+    st.markdown("La información proporcionada aquí se basa en el contenido elegido por abogados del Instituto Libertad. Esta IA **NO** reemplaza el asesoramiento legal profesional.") # Updated description to remove PDF
     st.markdown("---")
     st.markdown("**Instituto Libertad**")
     st.markdown("[Sitio Web](https://www.institutolibertad.cl)")
