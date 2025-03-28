@@ -434,10 +434,14 @@ st.markdown('<p class="subtitle">Instituto Libertad</p>', unsafe_allow_html=True
 def get_available_api_keys() -> List[str]:
     """Checks for configured API keys in st.secrets and returns a list of available key names."""
     available_keys = []
+    print("--- DEBUGGING st.secrets ---")  # Separator for logs
+    print("Contents of st.secrets:", st.secrets)  # Print the entire st.secrets dictionary
     for i in range(1, 6): # Check for up to 5 API keys
         key_name = f"GOOGLE_API_KEY_{i}"
         if key_name in st.secrets:
             available_keys.append(key_name)
+    print("Available keys found by function:", available_keys) # Print keys found by the function
+    print("--- DEBUGGING st.secrets END ---") # End separator
     return available_keys
 
 available_keys = get_available_api_keys()
