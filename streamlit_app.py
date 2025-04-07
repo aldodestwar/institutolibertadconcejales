@@ -436,7 +436,7 @@ def get_available_api_keys() -> List[str]:
     available_keys = []
     print("--- DEBUGGING st.secrets ---")  # Separator for logs
     print("Contents of st.secrets:", st.secrets)  # Print the entire st.secrets dictionary
-    for i in range(1, 6): # Check for up to 5 API keys
+    for i in range(1, 15): # Check for up to 15 API keys
         key_name = f"GOOGLE_API_KEY_{i}"
         if key_name in st.secrets:
             available_keys.append(key_name)
