@@ -9,22 +9,36 @@ from typing import List, Dict
 import hashlib
 import random # Import random module
 
-# --- Disclaimer State ---
-# Removed password-related session state initialization
+# --- Password and Disclaimer State ---
+if "authentication_successful" not in st.session_state:
+    st.session_state.authentication_successful = True # Set to True to bypass password
 if "disclaimer_accepted" not in st.session_state:
     st.session_state.disclaimer_accepted = False
+if "password_input" not in st.session_state:
+    st.session_state.password_input = "" # Initialize password input
 if "custom_api_key" not in st.session_state:
     st.session_state.custom_api_key = "" # Initialize custom API key state
 
-# --- Initial Screen (Disclaimer Only) ---
+# --- Initial Screen (Password and Disclaimer - Single Step) ---
 if not st.session_state.disclaimer_accepted:
     initial_screen_placeholder = st.empty()
     with initial_screen_placeholder.container():
         st.title("Acceso al Asesor Legal Municipal IA")
-        st.markdown("---") # Separator
+        # Removed password input
+        # password = st.text_input("Ingrese la clave de usuario", type="password", value=st.session_state.password_input) # Persist input
 
-        # Disclaimer is now shown directly, not dependent on password
-        with st.expander("Descargo de Responsabilidad (Leer antes de usar la IA)", expanded=True): # Expanded by default
+        # Removed button for verification and password check
+        # if st.button("Verificar Clave"): # Button for verification
+        #     if password.lower() == "ilconcejales":
+        #         st.session_state.authentication_successful = True
+        #     else:
+        #         st.session_state.authentication_successful = False
+        #         st.error("Clave incorrecta. Intente nuevamente.")
+
+        # Show disclaimer always now, authentication is bypassed
+        # if st.session_state.authentication_successful: # Show disclaimer only after correct password
+        st.markdown("---") # Separator
+        with st.expander("Descargo de Responsabilidad (Leer antes de usar la IA)", expanded=False):
             st.markdown("""
             **Descargo de Responsabilidad Completo:**
 
@@ -48,6 +62,8 @@ if not st.session_state.disclaimer_accepted:
             initial_screen_placeholder.empty() # Clear initial screen
             st.rerun() # Re-run to show main app
 
+        # Removed password persistence
+        # st.session_state.password_input = password # Update password input for persistence
     st.stop() # Stop execution here if disclaimer not accepted
 
 # --- Configuración de la página ---
@@ -422,15 +438,14 @@ st.markdown('<p class="subtitle">Instituto Libertad</p>', unsafe_allow_html=True
 def get_available_api_keys() -> List[str]:
     """Checks for configured API keys in st.secrets and returns a list of available key names."""
     available_keys = []
-    # print("--- DEBUGGING st.secrets ---")  # Separator for logs
-    # print("Contents of st.secrets:", st.secrets)  # Print the entire st.secrets dictionary
-    if hasattr(st, 'secrets'): # Check if st.secrets exists
-        for i in range(1, 15): # Check for up to 15 API keys
-            key_name = f"GOOGLE_API_KEY_{i}"
-            if key_name in st.secrets:
-                available_keys.append(key_name)
-    # print("Available keys found by function:", available_keys) # Print keys found by the function
-    # print("--- DEBUGGING st.secrets END ---") # End separator
+    print("--- DEBUGGING st.secrets ---")  # Separator for logs
+    print("Contents of st.secrets:", st.secrets)  # Print the entire st.secrets dictionary
+    for i in range(1, 15): # Check for up to 15 API keys
+        key_name = f"GOOGLE_API_KEY_{i}"
+        if key_name in st.secrets:
+            available_keys.append(key_name)
+    print("Available keys found by function:", available_keys) # Print keys found by the function
+    print("--- DEBUGGING st.secrets END ---") # End separator
     return available_keys
 
 available_keys = get_available_api_keys()
@@ -438,34 +453,23 @@ selected_key_name = None # Initialize selected_key_name outside if block
 GOOGLE_API_KEY = None # Initialize GOOGLE_API_KEY outside if block
 
 if not available_keys and not st.session_state.custom_api_key: # Check for custom key too
-    st.error("No API keys configuradas en st.secrets y no se ha ingresado una clave personalizada. Por favor configure al menos una API key (GOOGLE_API_KEY_1, GOOGLE_API_KEY_2, etc.) o ingrese una clave personalizada en la barra lateral. La aplicación no puede ejecutarse.", icon="🚨")
+    st.error("No API keys configured in st.secrets y no se ha ingresado una clave personalizada. Por favor configure al menos una API key (GOOGLE_API_KEY_1, GOOGLE_API_KEY_2, etc.) o ingrese una clave personalizada en la barra lateral. La aplicación no puede ejecutarse.", icon="🚨")
     st.stop() # Stop execution if no API keys are found
 
 if st.session_state.custom_api_key: # Use custom API key if provided
     GOOGLE_API_KEY = st.session_state.custom_api_key
     selected_key_name = "Clave Personalizada" # Indicate custom key is used
-elif available_keys: # Fallback to random selection from st.secrets only if available
+else: # Fallback to random selection from st.secrets
     selected_key_name = random.choice(available_keys) # Randomly select an API key name
     GOOGLE_API_KEY = st.secrets[selected_key_name] # Access the selected API key
-else:
-    # This case should theoretically not be reached due to the check above, but added for safety
-    st.error("Error crítico: No se pudo determinar una API Key válida.", icon="🚨")
-    st.stop()
 
 genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash') # Changed model name
+model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
 
 # --- Funciones para cargar y procesar archivos ---
 
 # Usar ruta relativa para la carpeta de datos (más portable)
-# Check if running in Streamlit Cloud or locally
-if 'STREAMLIT_APP_PATH' in os.environ:
-    # Running on Streamlit Cloud, use relative path from app root
-    script_dir = os.path.dirname(os.environ['STREAMLIT_APP_PATH'])
-else:
-    # Running locally, use __file__
-    script_dir = os.path.dirname(__file__)
-
+script_dir = os.path.dirname(__file__)
 DATABASE_DIR = os.path.join(script_dir, "data")
 
 @st.cache_data(show_spinner=False, persist="disk", max_entries=10) # Caching to load files only once, added max_entries
@@ -478,28 +482,21 @@ def load_database_files_cached(directory: str) -> Dict[str, str]:
 
     file_list = sorted([f for f in os.listdir(directory) if f.endswith(".txt")])
     content_hash = hashlib.sha256()
-    current_hash_data = {} # Store hash per file
-
-    # First pass: calculate hashes
     for filename in file_list:
         filepath = os.path.join(directory, filename)
         try:
-            with open(filepath, "rb") as f: # Read as bytes for hashing
-                file_content_bytes = f.read()
-                current_hash_data[filename] = hashlib.sha256(file_content_bytes).hexdigest()
+            with open(filepath, "r", encoding="utf-8") as f:
+                file_content = f.read()
+                content_hash.update(file_content.encode('utf-8')) # Hash the content, not just filenames
         except Exception as e:
             st.error(f"Error al leer el archivo {filename} para calcular el hash: {e}")
-            return {} # Return empty dict on error
+            return {} # Return empty dict on error to avoid using potentially incomplete data
 
-    # Check against cached hashes
-    if ("database_file_hashes" in st.session_state and
-        st.session_state.database_file_hashes == current_hash_data and
-        "database_files" in st.session_state and st.session_state.database_files):
-        # print("Using cached database files.") # Debug print
-        return st.session_state.database_files # Return cached data if hashes match
+    current_hash = content_hash.hexdigest()
 
-    # print("Cache invalid or empty, reloading database files.") # Debug print
-    # Hashes differ or cache is empty, reload files
+    if "database_cache_key" in st.session_state and st.session_state.database_cache_key == current_hash and st.session_state.database_files:
+        return st.session_state.database_files # Return cached data if hash is the same
+
     st.session_state.database_files = {} # Reset in-memory cache before reloading
     for filename in file_list:
         filepath = os.path.join(directory, filename)
@@ -509,29 +506,40 @@ def load_database_files_cached(directory: str) -> Dict[str, str]:
         except Exception as e:
             st.error(f"Error al leer el archivo {filename}: {e}")
 
-    st.session_state.database_file_hashes = current_hash_data # Update cache key with content hash
+    st.session_state.database_cache_key = current_hash # Update cache key with content hash
     return st.session_state.database_files
 
-def load_file_content(uploaded_file) -> str:
-    """Carga el contenido de un archivo .txt desde un objeto UploadedFile."""
+def load_file_content(filepath: str) -> str:
+    """Carga el contenido de un archivo .txt."""
     try:
-        # Check filename extension from the UploadedFile object
-        if uploaded_file.name.lower().endswith(".txt"):
-            # Use BytesIO to handle the uploaded file object directly
-            stringio = BytesIO(uploaded_file.getvalue())
-            # Decode assuming UTF-8, handle potential errors
-            return stringio.read().decode("utf-8", errors='replace')
+        if filepath.lower().endswith(".txt"):
+            with open(filepath, "r", encoding="utf-8") as f:
+                return f.read()
         else:
-            st.error(f"Tipo de archivo no soportado: {uploaded_file.name}")
+            st.error(f"Tipo de archivo no soportado: {filepath}")
             return ""
     except Exception as e:
-        st.error(f"Error al leer el archivo adjunto {uploaded_file.name}: {e}")
+        st.error(f"Error al leer el archivo {filepath}: {e}")
         return ""
 
 def get_file_description(filename: str) -> str:
     """Genera una descripción genérica para un archivo basado en su nombre."""
     name_parts = filename.replace(".txt", "").split("_")
     return " ".join(word.capitalize() for word in name_parts)
+
+def discover_and_load_files(directory: str) -> Dict[str, str]:
+    """Descubre y carga todos los archivos .txt en un directorio.""" # Updated description
+    file_contents = {}
+    if not os.path.exists(directory):
+        st.warning(f"Directorio de base de datos no encontrado: {directory}")
+        return file_contents
+
+    for filename in os.listdir(directory):
+        if filename.endswith(".txt"): # Only process .txt files
+            filepath = os.path.join(directory, filename)
+            file_contents[filename] = load_file_content(filepath)
+    return file_contents
+
 
 # --- Prompt mejorado MODIFICADO para enviar TODOS los documentos ---
 def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, query: str) -> str:
@@ -547,8 +555,7 @@ def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, qu
     if database_files_content: # Modificado para usar database_files_content directamente
         for filename, content in database_files_content.items(): # Iterar sobre TODOS los archivos
             if filename == "MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt":
-                prompt_parts.append(f"\n**{filename.replace('.txt', '')} (Contexto General):**\n{content}\n") # Add manual content here
-                continue # Skip adding it again below
+                continue # Exclude manual from this section, it's already handled above
             description = get_file_description(filename)
             # Modified line to remove .txt from filename in prompt
             prompt_parts.append(f"\n**{description} ({filename.replace('.txt', '')}):**\n{content}\n")
@@ -577,63 +584,57 @@ def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, qu
         "**Instrucciones específicas:**",
         """
 *   Comienza tus respuestas con un **breve resumen conciso de la respuesta en una frase inicial.**
-*   Luego, **desarrolla la respuesta de manera completa y detallada**, proporcionando un análisis legal **citando siempre la fuente normativa específica.** **NUNCA CITES EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO DIRECTAMENTE NI ALUDAS A ÉL POR NINGÚN MEDIO, EXCEPTO PARA DECIR QUE LO USAS COMO CONTEXTO GENERAL SI ES NECESARIO.**
+*   Luego, **desarrolla la respuesta de manera completa y detallada**, proporcionando un análisis legal **citando siempre la fuente normativa específica.** **NUNCA CITES EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO DIRECTAMENTE NI ALUDAS A ÉL POR NINGÚN MEDIO.**
     *   **Prioriza la información de la base de datos de normas legales** cuando la pregunta se refiera específicamente a este documento. **Cita explícitamente el documento y la parte relevante (artículo, sección, etc.).**
     *   **Luego, considera la información adicional proporcionada por el usuario** si es relevante para la pregunta. **Cita explícitamente el documento adjunto y la parte relevante.**
-    *   Para preguntas sobre otros temas de derecho municipal chileno, utiliza tu conocimiento general, basado en tu entrenamiento legal. **Cita explícitamente la norma general del derecho municipal chileno.**
+    *   Para preguntas sobre otros temas de derecho municipal chileno, utiliza tu conocimiento general, pero sé conciso y preciso. **Cita explícitamente la norma general del derecho municipal chileno.**
 *   **Si la pregunta se relaciona con el funcionamiento interno del Concejo Municipal, como sesiones, tablas, puntos, o reglamento interno, y para responder correctamente se necesita información específica sobre reglamentos municipales, indica lo siguiente, basado en tu entrenamiento legal:** "Las normas sobre el funcionamiento interno del concejo municipal, como sesiones, tablas y puntos, se encuentran reguladas principalmente en el Reglamento Interno de cada Concejo Municipal.  Por lo tanto, **las reglas específicas pueden variar significativamente entre municipalidades.**  Mi respuesta se basará en mi entrenamiento en derecho municipal chileno y las normas generales que rigen estas materias, **pero te recomiendo siempre verificar el Reglamento Interno específico de tu municipalidad para obtener detalles precisos.**"  **Si encuentras información relevante en tu entrenamiento legal sobre el tema, proporciona una respuesta basada en él, pero siempre incluyendo la advertencia sobre la variabilidad entre municipalidades.**
-*   **Si la información para responder la pregunta no se encuentra en la base de datos de normas legales proporcionada (excluyendo el manual de contexto), responde de forma concisa:** "Según la información disponible en la base de datos de normas legales, no puedo responder a esta pregunta."
-*   **Si la información para responder la pregunta no se encuentra en la información adicional proporcionada, responde de forma concisa:** "Según la información adicional proporcionada, no puedo responder a esta pregunta."
-*   **Si la información para responder la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno (ni en el manual de contexto), responde de forma concisa:** "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."
-*   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS. NUNCA MENCIONES NI CITES DIRECTAMENTE EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO, EXCEPTO PARA INDICAR QUE LO USAS COMO CONTEXTO GENERAL SI ES NECESARIO.**
+*   **Si la información para responder la pregunta no se encuentra en la base de datos de normas legales proporcionada, responde de forma concisa: "Según la información disponible en la base de datos, no puedo responder a esta pregunta."**
+*   **Si la información para responder la pregunta no se encuentra en la información adicional proporcionada, responde de forma concisa: "Según la información adicional proporcionada, no puedo responder a esta pregunta."**
+*   **Si la información para responder la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
+*   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS. NUNCA MENCIONES NI CITES DIRECTAMENTE EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO.**
         """,
-        "**Ejemplos de respuestas esperadas (con resumen y citación - SIN CITAR MANUAL DIRECTAMENTE, BASADO EN ENTRENAMIENTO LEGAL Y DATOS):**",
+        "**Ejemplos de respuestas esperadas (con resumen y citación - SIN MANUAL, BASADO EN ENTRENAMIENTO LEGAL):**",
         """
 *   **Pregunta del Usuario:** "¿Cuáles son las funciones del concejo municipal?"
     *   **Respuesta Esperada:** "Resumen: Las funciones del concejo municipal son normativas, fiscalizadoras y representativas.
-        Desarrollo: Efectivamente, las funciones del concejo municipal se clasifican en normativas, fiscalizadoras y representativas. Esta clasificación se basa en mi entrenamiento general sobre derecho municipal chileno y se encuentra detallada en el artículo 79 de la Ley Orgánica Constitucional de Municipalidades (Nº 18.695)."
+        Desarrollo:  Efectivamente, las funciones del concejo municipal se clasifican en normativas, fiscalizadoras y representativas (Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades)."
 *   **Pregunta del Usuario:** "¿Qué dice el artículo 25 sobre las citaciones a las sesiones en el Reglamento del Concejo Municipal?"
     *   **Respuesta Esperada:** "Resumen: El artículo 25 del Reglamento del Concejo Municipal establece los plazos y formalidades para las citaciones a sesiones ordinarias y extraordinarias.
-        Desarrollo: Así es, el artículo 25 del documento 'Reglamento Concejo Municipal' detalla los plazos y formalidades que deben seguirse al realizar citaciones tanto para sesiones ordinarias como extraordinarias (Artículo 25 del Reglamento Concejo Municipal)."
+        Desarrollo:  Así es, el artículo 25 del Reglamento del Concejo Municipal detalla los plazos y formalidades que deben seguirse al realizar citaciones tanto para sesiones ordinarias como extraordinarias (Artículo 25 del Reglamento del Concejo Municipal)."
 *   **Pregunta del Usuario:** (Adjunta un archivo con jurisprudencia sobre transparencia municipal) "¿Cómo se aplica esta jurisprudencia en el concejo?"
     *   **Respuesta Esperada:** "Resumen: La jurisprudencia adjunta establece criterios sobre publicidad y acceso a la información pública municipal, relevantes para la transparencia del concejo.
-        Desarrollo: Correcto, la jurisprudencia que adjuntas en el archivo proporcionado por el usuario define criterios importantes sobre la publicidad de las sesiones del concejo y el acceso a la información pública municipal. Estos criterios deben ser considerados para asegurar la transparencia en todas las actuaciones del concejo (Según la información adicional proporcionada por el usuario)."
+        Desarrollo:  Correcto, la jurisprudencia que adjuntas en 'Sentencia_Rol_1234-2023.txt' define criterios importantes sobre la publicidad de las sesiones del concejo y el acceso a la información pública municipal. Estos criterios deben ser considerados para asegurar la transparencia en todas las actuaciones del concejo (Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt')."
 *   **Pregunta del Usuario:** "¿Cómo se define la tabla de una sesión del concejo municipal?"
-    *   **Respuesta Esperada:** "Resumen: La tabla de una sesión del concejo municipal es el listado de temas a tratar en la sesión, fijada por el alcalde, aunque los detalles pueden variar según el reglamento interno.
-        Desarrollo: Las normas específicas sobre la tabla de sesiones se encuentran en el Reglamento Interno de cada Concejo Municipal, por lo que pueden variar. Basándome en mi entrenamiento en derecho municipal chileno, la tabla de una sesión se define como el listado de los temas específicos que serán tratados en una sesión del concejo, y su fijación es generalmente responsabilidad del alcalde (Artículo 82, Ley Nº 18.695). **Es importante verificar el Reglamento Interno de tu municipalidad, ya que los detalles de este proceso pueden variar entre municipios.**"
+    *   **Respuesta Esperada:** "Resumen: La tabla de una sesión del concejo municipal es el listado de temas a tratar en la sesión, fijada por el alcalde.
+        Desarrollo: Las normas sobre la tabla de sesiones se encuentran en el Reglamento Interno de cada Concejo Municipal, por lo que pueden variar.  Basándome en mi entrenamiento en derecho municipal chileno, la tabla de una sesión se define como el listado de los temas específicos que serán tratados en una sesión del concejo, y su fijación es responsabilidad del alcalde. **Es importante verificar el Reglamento Interno de tu municipalidad, ya que los detalles de este proceso pueden variar entre municipios.**"
         """,
         "**Historial de conversación:**"
     ])
 
     # Añadir historial de conversación
-    for msg in st.session_state.messages[:-1]: # Exclude the latest user message which is the current query
+    for msg in st.session_state.messages[:-1]:
         if msg["role"] == "user":
             prompt_parts.append(f"Usuario: {msg['content']}\n")
-        elif msg["role"] == "assistant": # Ensure only assistant messages are added here
+        else:
             prompt_parts.append(f"Asistente: {msg['content']}\n")
 
     prompt_parts.append(f"**Pregunta actual del usuario:** {query}")
 
     return "\n".join(prompt_parts)
 
-
 # --- Inicializar el estado para los archivos ---
 if "database_files" not in st.session_state:
     st.session_state.database_files = {}
 if "uploaded_files_content" not in st.session_state:
     st.session_state.uploaded_files_content = ""
-if "database_file_hashes" not in st.session_state: # Changed from database_cache_key
-    st.session_state.database_file_hashes = {}
-if "uploaded_file_names" not in st.session_state: # To store names of uploaded files
-    st.session_state.uploaded_file_names = []
-
+if "database_cache_key" not in st.session_state:
+    st.session_state.database_cache_key = None
 
 # --- Carga inicial de archivos ---
 def load_database_files_on_startup():
     """Carga todos los archivos de la base de datos al inicio."""
-    # print(f"Attempting to load database from: {DATABASE_DIR}") # Debug print
     st.session_state.database_files = load_database_files_cached(DATABASE_DIR) # Load/refresh database files
-    # print(f"Loaded {len(st.session_state.database_files)} files from database.") # Debug print
     return len(st.session_state.database_files)
 
 database_files_loaded_count = load_database_files_on_startup()
@@ -650,10 +651,7 @@ if "current_conversation_name" not in st.session_state:
     st.session_state.current_conversation_name = "Nueva Conversación"
 
 def save_conversation(name, messages, pinned=False):
-    # Ensure messages are serializable (list of dicts)
-    serializable_messages = [{"role": msg["role"], "content": msg["content"]} for msg in messages]
-    st.session_state.saved_conversations[name] = {"messages": serializable_messages, "pinned": pinned}
-
+    st.session_state.saved_conversations[name] = {"messages": messages, "pinned": pinned}
 
 def delete_conversation(name):
     if name in st.session_state.saved_conversations:
@@ -661,11 +659,8 @@ def delete_conversation(name):
 
 def load_conversation(name):
     if name in st.session_state.saved_conversations:
-        # Ensure loaded messages are in the correct format
-        loaded_messages = st.session_state.saved_conversations[name]["messages"]
-        st.session_state.messages = [{"role": msg["role"], "content": msg["content"]} for msg in loaded_messages]
+        st.session_state.messages = st.session_state.saved_conversations[name]["messages"]
         st.session_state.current_conversation_name = name
-
 
 def pin_conversation(name):
     if name in st.session_state.saved_conversations:
@@ -678,7 +673,7 @@ def unpin_conversation(name):
 # --- Barra lateral ---
 with st.sidebar:
     st.markdown('<div class="sidebar-logo-container"></div>', unsafe_allow_html=True)
-    st.header("Menú Principal") # Changed Header
+    st.header("Historial de Conversaciones")
 
     disclaimer_status_expander = st.expander("Estado del Disclaimer", expanded=True) # Initially expanded
     with disclaimer_status_expander:
@@ -704,119 +699,62 @@ with st.sidebar:
         st.rerun() # Rerun to apply the new API key
 
     st.subheader("Cargar Datos Adicionales")
-    uploaded_files = st.file_uploader("Adjuntar archivos adicionales (.txt)", type=["txt"], help="Puedes adjuntar archivos .txt adicionales para que sean considerados en la respuesta.", accept_multiple_files=True, key="file_uploader") # Added key
+    uploaded_files = st.file_uploader("Adjuntar archivos adicionales (.txt)", type=["txt"], help="Puedes adjuntar archivos .txt adicionales para que sean considerados en la respuesta.", accept_multiple_files=True) # Updated to only accept .txt
     if uploaded_files:
-        newly_uploaded_content = ""
-        newly_uploaded_names = []
-        # Process only new files if some were already processed
-        current_uploaded_names = [f.name for f in uploaded_files]
-        new_files_to_process = [f for f in uploaded_files if f.name not in st.session_state.uploaded_file_names]
+        st.session_state.uploaded_files_content = ""
+        for uploaded_file in uploaded_files:
+            try:
+                content = load_file_content(uploaded_file.name) # Pass filename for correct reading
+                st.session_state.uploaded_files_content += content + "\n\n"
+            except Exception as e:
+                st.error(f"Error al leer el archivo adjunto {uploaded_file.name}: {e}")
 
-        if new_files_to_process:
-            # Reset content only if new files are added
-            st.session_state.uploaded_files_content = ""
-            st.session_state.uploaded_file_names = []
-            for uploaded_file in uploaded_files: # Process all currently selected files
-                try:
-                    # Pass the UploadedFile object directly
-                    content = load_file_content(uploaded_file)
-                    if content: # Add content only if successfully loaded
-                        st.session_state.uploaded_files_content += f"--- INICIO ARCHIVO: {uploaded_file.name} ---\n{content}\n--- FIN ARCHIVO: {uploaded_file.name} ---\n\n"
-                        st.session_state.uploaded_file_names.append(uploaded_file.name)
-                except Exception as e:
-                    st.error(f"Error al procesar el archivo adjunto {uploaded_file.name}: {e}")
-            st.success(f"{len(st.session_state.uploaded_file_names)} archivo(s) adicional(es) cargado(s).")
-            # No rerun needed here, state is updated
+    if st.button("Limpiar archivos adicionales"):
+        st.session_state.uploaded_files_content = ""
+        st.rerun()
 
-    # Display currently loaded additional files
-    if st.session_state.uploaded_file_names:
-        st.markdown("**Archivos adicionales cargados:**")
-        for name in st.session_state.uploaded_file_names:
-            st.markdown(f"- `{name}`")
-        if st.button("Limpiar archivos adicionales"):
-            st.session_state.uploaded_files_content = ""
-            st.session_state.uploaded_file_names = []
-            # Reset the file uploader widget state by changing its key slightly or using experimental_rerun
-            st.rerun()
-
-
-    st.subheader("Gestión de Conversación") # Changed Header
     new_conversation_name = st.text_input("Título conversación:", value=st.session_state.current_conversation_name)
     if new_conversation_name != st.session_state.current_conversation_name:
         st.session_state.current_conversation_name = new_conversation_name
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("Guardar", help="Guarda la conversación actual con el título ingresado."): # Added help text
-            # Limit saved conversations (optional, implement if needed)
-            # if len(st.session_state.saved_conversations) >= 10: # Example limit
-            #     # Logic to remove oldest or unpinned conversation
-            #     st.warning("Límite de conversaciones guardadas alcanzado.")
-            # else:
-            save_conversation(st.session_state.current_conversation_name, st.session_state.messages)
-            st.success(f"Conversación '{st.session_state.current_conversation_name}' guardada!", icon="💾")
-            # No rerun needed, just update state
+        if st.button("Guardar"):
+            if len(st.session_state.saved_conversations) >= 5:
+                unpinned_conversations = [name for name, data in st.session_state.saved_conversations.items() if not data['pinned']]
+                if unpinned_conversations:
+                    oldest_unpinned = min(st.session_state.saved_conversations, key=lambda k: st.session_state.saved_conversations[k]['messages'][0]['content'] if st.session_state.saved_conversations[k]['messages'] else "")
+                    delete_conversation(oldest_unpinned)
+            st.session_state.messages_before_save = list(st.session_state.messages)
+            save_conversation(st.session_state.current_conversation_name, st.session_state.messages_before_save)
+            st.success("Conversación guardada!", icon="💾")
+            st.rerun()
     with col2:
-        if st.button("Borrar Chat", key="clear_chat_sidebar", help="Borra los mensajes de la conversación actual (excepto el saludo inicial)."): # Added help text
-            st.session_state.messages = [st.session_state.messages[0]] # Keep initial greeting
-            st.session_state.current_conversation_name = "Nueva Conversación" # Reset name for clarity
+        if st.button("Borrar Chat", key="clear_chat_sidebar"):
+            st.session_state.messages = [st.session_state.messages[0]]
             st.rerun()
     with col3:
-        # Pinning logic only makes sense if the conversation is already saved
-        is_saved = st.session_state.current_conversation_name in st.session_state.saved_conversations
-        if is_saved:
-            is_pinned = st.session_state.saved_conversations[st.session_state.current_conversation_name].get('pinned', False)
-            pin_label = "Quitar Pin" if is_pinned else "Fijar"
-            pin_icon = "📌"
-            if st.button(f"{pin_icon} {pin_label}", key="pin_button", help="Fija o desfija la conversación actual en la lista de guardadas."): # Added help text
+        is_pinned = st.session_state.saved_conversations.get(st.session_state.current_conversation_name, {}).get('pinned', False)
+        if st.button("📌" if not is_pinned else " 📌 ", key="pin_button"):
+            if st.session_state.current_conversation_name in st.session_state.saved_conversations:
                 if is_pinned:
                     unpin_conversation(st.session_state.current_conversation_name)
-                    st.success(f"Conversación '{st.session_state.current_conversation_name}' desfijada.")
                 else:
                     pin_conversation(st.session_state.current_conversation_name)
-                    st.success(f"Conversación '{st.session_state.current_conversation_name}' fijada.")
-                st.rerun() # Rerun to update the saved list display
-        else:
-            st.button("Fijar", disabled=True, help="Guarda la conversación primero para poder fijarla.") # Disabled button if not saved
-
+                st.rerun()
 
     st.subheader("Conversaciones Guardadas")
-    # Sort saved conversations: Pinned first, then alphabetically
-    sorted_conversations = sorted(
-        st.session_state.saved_conversations.items(),
-        key=lambda item: (not item[1]['pinned'], item[0].lower()) # Sort by not pinned (False=0, True=1), then name
-    )
-
-    if not sorted_conversations:
-        st.caption("No hay conversaciones guardadas.")
-    else:
-        for name, data in sorted_conversations:
-            cols = st.columns([0.7, 0.15, 0.15]) # Adjusted column ratios
-            with cols[0]:
-                pin_indicator = "📌 " if data['pinned'] else ""
-                if st.button(f"{pin_indicator}{name}", key=f"load_{name}", help=f"Cargar conversación '{name}'"): # Added help text
-                    load_conversation(name)
-                    # st.session_state.current_conversation_name = name # load_conversation already does this
-                    st.rerun()
-            with cols[1]:
-                 # Add Pin/Unpin button directly here for saved items
-                is_pinned = data.get('pinned', False)
-                pin_label_saved = " ➖ " if is_pinned else " ➕ " # Use different icons maybe?
-                pin_help = "Quitar Pin" if is_pinned else "Fijar"
-                if st.button(f"📌{pin_label_saved}", key=f"pin_saved_{name}", help=f"{pin_help} conversación '{name}'"):
-                    if is_pinned:
-                        unpin_conversation(name)
-                    else:
-                        pin_conversation(name)
-                    st.rerun() # Rerun to update list order
-            with cols[2]:
-                if st.button("🗑️", key=f"delete_{name}", help=f"Borrar conversación '{name}'"): # Added help text
-                    delete_conversation(name)
-                    # If deleting the current conversation, reset chat
-                    if name == st.session_state.current_conversation_name:
-                         st.session_state.messages = [st.session_state.messages[0]]
-                         st.session_state.current_conversation_name = "Nueva Conversación"
-                    st.rerun()
+    for name, data in sorted(st.session_state.saved_conversations.items(), key=lambda item: item[1]['pinned'], reverse=True):
+        cols = st.columns([0.7, 0.2, 0.1])
+        with cols[0]:
+            if st.button(f"{'📌' if data['pinned'] else ''} {name}", key=f"load_{name}"):
+                load_conversation(name)
+                st.session_state.current_conversation_name = name
+                st.rerun()
+        with cols[1]:
+            if st.button("🗑️", key=f"delete_{name}"):
+                delete_conversation(name)
+                st.rerun()
 
     st.markdown("---")
     st.header("Acerca de")
@@ -831,104 +769,107 @@ with st.sidebar:
     st.subheader("Datos Cargados")
     if st.session_state.database_files:
         st.markdown(f"**Base de Datos:** Se ha cargado información desde {database_files_loaded_count} archivo(s) automáticamente.")
-        # Display loaded database file names
-        with st.expander("Ver archivos de base de datos cargados"):
-             for db_filename in st.session_state.database_files.keys():
-                 st.caption(f"- {db_filename}")
-        if st.button("Recargar Base de Datos", key="refresh_db_button", help="Vuelve a cargar los archivos desde la carpeta 'data'."): # Refresh Database Button
+        if st.button("Recargar Base de Datos", key="refresh_db_button"): # Refresh Database Button
             database_files_loaded_count = load_database_files_on_startup()
-            st.success(f"Base de datos recargada ({database_files_loaded_count} archivos).", icon="🔄")
-            st.rerun() # Rerun to reflect changes immediately in chat if needed
-    # Removed redundant display of uploaded files count here, already shown above
-
+            st.success("Base de datos recargada.", icon="🔄")
+    if st.session_state.uploaded_files_content:
+        uploaded_file_count = 0
+        if uploaded_files: # Check if uploaded_files is defined to avoid errors on initial load
+            uploaded_file_count = len(uploaded_files)
+        st.markdown(f"**Archivos Adicionales:** Se ha cargado información desde {uploaded_file_count} archivo(s).") # Updated description to remove PDF
     if not st.session_state.database_files and not st.session_state.uploaded_files_content:
         st.warning("No se ha cargado ninguna base de datos del reglamento ni archivos adicionales.")
     elif not st.session_state.database_files:
-        st.warning("No se ha encontrado o cargado la base de datos del reglamento automáticamente desde la carpeta 'data'.")
-
+        st.warning("No se ha encontrado o cargado la base de datos del reglamento automáticamente.")
 
 # --- Área de chat ---
 if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accepted
-    # Display chat messages
-    message_container = st.container() # Use a container to manage chat messages display
-    with message_container:
-        for message in st.session_state.messages:
-            avatar_url = "https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo" if message["role"] == "assistant" else None
-            with st.chat_message(message["role"], avatar=avatar_url):
-                 st.markdown(message["content"]) # Use markdown for potential formatting in response
-
+    for message in st.session_state.messages:
+        with st.container():
+            if message["role"] == "user":
+                st.markdown(f'<div class="chat-message user-message"><div class="message-content">{message["content"]}</div></div>', unsafe_allow_html=True)
+            else:
+                with st.chat_message("assistant", avatar="https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo"): # Moved avatar here
+                    st.markdown(f'<div class="message-content">{message["content"]}</div>', unsafe_allow_html=True)
 
     # --- Campo de entrada para el usuario ---
     if prompt := st.chat_input("Escribe tu consulta...", key="chat_input"):
-        # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": prompt})
 
-        # Display user message immediately
-        with message_container: # Add to the same container
-             with st.chat_message("user"):
-                 st.markdown(prompt)
+        # Immediately display user message
+        with st.container():
+            st.markdown(f'<div class="chat-message user-message"><div class="message-content">{prompt}</div></div>', unsafe_allow_html=True)
 
-        # Prepare and send prompt to the model, display response
-        with st.chat_message("assistant", avatar="https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo"):
-            message_placeholder = st.empty()
-            # Display typing indicator
-            typing_placeholder = st.empty()
-            typing_placeholder.markdown('<div class="assistant-typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>', unsafe_allow_html=True)
+        # Process query and generate assistant response in a separate container
+        with st.container(): # New container for processing and assistant response
+            # **YA NO ANALIZAMOS LA CONSULTA - ENVIAMOS TODOS LOS ARCHIVOS**
+            # relevant_filenames = analyze_query(prompt, st.session_state.database_files) # REMOVE THIS LINE
+            # relevant_database_data = {filename: st.session_state.database_files[filename] for filename in relevant_filenames} # REMOVE THIS LINE
 
-            try:
-                # Create the full prompt including history and context
-                prompt_completo = create_prompt(
-                    st.session_state.database_files,
-                    st.session_state.uploaded_files_content,
-                    prompt
-                )
+            # Construir el prompt completo - AHORA CON TODOS LOS ARCHIVOS
+            prompt_completo = create_prompt(st.session_state.database_files, st.session_state.uploaded_files_content, prompt) # MODIFICADO
 
-                # Generate response stream
-                response = model.generate_content(prompt_completo, stream=True)
+            with st.chat_message("assistant", avatar="https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo"):
+                message_placeholder = st.empty()
+                full_response = ""
+                is_typing = True  # Indicar que el asistente está "escribiendo"
+                typing_placeholder = st.empty()
+                typing_placeholder.markdown('<div class="assistant-typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>', unsafe_allow_html=True)
 
-                full_response_content = ""
-                for chunk in response:
-                    # Check for potential errors or empty chunks in the stream
-                    try:
-                        chunk_text = chunk.text
-                        full_response_content += chunk_text
-                        message_placeholder.markdown(full_response_content + "▌") # Update placeholder with streaming text
-                    except ValueError as ve:
-                         # Handle potential content blocking or other issues gracefully
-                         st.warning(f"Advertencia: Se encontró un problema en parte de la respuesta ({ve}). Mostrando contenido parcial.", icon="⚠️")
-                         # Continue processing other chunks if possible
-                         continue
-                    except Exception as chunk_error:
-                         st.error(f"Error procesando un chunk de la respuesta: {chunk_error}", icon="🚨")
-                         full_response_content += "\n\n[Error procesando parte de la respuesta]"
-                         break # Stop processing stream on chunk error
-                    time.sleep(0.01) # Small delay for streaming effect
+                try:
+                    response = model.generate_content(prompt_completo, stream=True) # Capture the response object
 
-                # Clear typing indicator and finalize message
-                typing_placeholder.empty()
-                message_placeholder.markdown(full_response_content) # Display final complete response
+                    # Add summary and detailed response structure
+                    summary_finished = False
+                    detailed_response = ""
+                    full_response_chunks = []
 
-                # Add final assistant response to session state
-                st.session_state.messages.append({"role": "assistant", "content": full_response_content})
-
-                # Safety check in case the stream finished but yielded no actual content
-                if not full_response_content.strip():
-                    st.error("El modelo no generó una respuesta para esta consulta.", icon="❓")
-                    st.session_state.messages.append({"role": "assistant", "content": "[El modelo no generó respuesta]"})
+                    for chunk in response: # Iterate over the response object
+                        chunk_text = chunk.text or ""
+                        full_response_chunks.append(chunk_text)
+                        full_response = "".join(full_response_chunks)
 
 
-            except Exception as e:
-                typing_placeholder.empty() # Ensure typing indicator is removed on error
-                st.error(f"Ocurrió un error al comunicarse con el modelo IA: {e}. Por favor, revisa tu API Key o intenta de nuevo.", icon="🚨")
-                # Add error message to chat history
-                error_message = f"Error al generar respuesta: {e}"
-                st.session_state.messages.append({"role": "assistant", "content": error_message})
-                message_placeholder.markdown(error_message) # Show error in the chat message area
+                        if not summary_finished:
+                            # Basic heuristic to detect summary end (can be improved)
+                            if "\nDesarrollo:" in full_response:
+                                summary_finished = True
+                                message_placeholder.markdown(full_response + "▌") # Show both summary and start of development
+                            else:
+                                message_placeholder.markdown(full_response + "▌") # Still in summary part
+                        else: # After summary, just append
+                             message_placeholder.markdown(full_response + "▌")
 
-            # Rerun slightly after response generation to ensure layout updates smoothly
-            # time.sleep(0.1)
-            # st.rerun() # Consider if rerun is truly needed here, might cause flicker
+                        time.sleep(0.015)  # Slightly faster
 
+
+                    if not response.candidates: # Check if candidates is empty AFTER stream completion
+                        full_response = """
+                        Lo siento, no pude generar una respuesta adecuada para tu pregunta con la información disponible.
+                        **Posibles razones:**
+                        * La pregunta podría ser demasiado compleja o específica.
+                        * La información necesaria para responder podría no estar en la base de datos actual o en los archivos adjuntos.
+                        * Limitaciones del modelo de IA.
+
+                        **¿Qué puedes intentar?**
+                        * **Reformula tu pregunta:**  Intenta hacerla más simple o más directa.
+                        * **Proporciona más detalles:**  Añade contexto o información clave a tu pregunta.
+                        * **Carga archivos adicionales:**  Si tienes documentos relevantes, adjúntalos para ampliar la base de conocimiento.
+                        * **Consulta fuentes legales adicionales:**  Esta herramienta es un apoyo, pero no reemplaza el asesoramiento de un abogado especializado.
+                        """
+                        st.error("No se pudo generar una respuesta válida. Consulta la sección de ayuda en el mensaje del asistente.", icon="⚠️")
+
+                    typing_placeholder.empty()  # Eliminar "escribiendo..." al finalizar
+                    is_typing = False
+                    message_placeholder.markdown(full_response)
+
+
+                except Exception as e:
+                    typing_placeholder.empty()
+                    is_typing = False
+                    st.error(f"Ocurrió un error inesperado al generar la respuesta: {e}. Por favor, intenta de nuevo más tarde.", icon="🚨") # More prominent error icon
+                    full_response = f"Ocurrió un error inesperado: {e}. Por favor, intenta de nuevo más tarde."
+
+                st.session_state.messages.append({"role": "assistant", "content": full_response})
 else: # Disclaimer not accepted, show message instead of chat
-    st.warning("Para usar el Asesor Legal Municipal IA, debes aceptar el Disclaimer.", icon="⚠️")
-    st.info("Por favor, lee y acepta el descargo de responsabilidad en la pantalla inicial para continuar.")
+    st.warning("Para usar el Asesor Legal Municipal IA, debes aceptar el Disclaimer en la barra lateral.", icon="⚠️")
