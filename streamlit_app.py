@@ -19,30 +19,14 @@ if "password_input" not in st.session_state:
 if "custom_api_key" not in st.session_state:
     st.session_state.custom_api_key = "" # Initialize custom API key state
 
-# --- API Key Session State ---
-if "selected_api_key_name" not in st.session_state:
-    st.session_state.selected_api_key_name = None
-if "active_api_key" not in st.session_state:
-    st.session_state.active_api_key = None
-
 # --- Initial Screen (Password and Disclaimer - Single Step) ---
 if not st.session_state.disclaimer_accepted:
     initial_screen_placeholder = st.empty()
     with initial_screen_placeholder.container():
         st.title("Acceso a Municip.IA")
         # Removed password input
-        # password = st.text_input("Ingrese la clave de usuario", type="password", value=st.session_state.password_input) # Persist input
-
-        # Removed button for verification and password check
-        # if st.button("Verificar Clave"): # Button for verification
-        #     if password.lower() == "ilconcejales":
-        #         st.session_state.authentication_successful = True
-        #     else:
-        #         st.session_state.authentication_successful = False
-        #         st.error("Clave incorrecta. Intente nuevamente.")
 
         # Show disclaimer always now, authentication is bypassed
-        # if st.session_state.authentication_successful: # Show disclaimer only after correct password
         st.markdown("---") # Separator
         with st.expander("Descargo de Responsabilidad (Leer antes de usar la IA)", expanded=False):
             st.markdown("""
@@ -68,8 +52,6 @@ if not st.session_state.disclaimer_accepted:
             initial_screen_placeholder.empty() # Clear initial screen
             st.rerun() # Re-run to show main app
 
-        # Removed password persistence
-        # st.session_state.password_input = password # Update password input for persistence
     st.stop() # Stop execution here if disclaimer not accepted
 
 # --- Configuración de la página ---
@@ -458,23 +440,16 @@ available_keys = get_available_api_keys()
 selected_key_name = None # Initialize selected_key_name outside if block
 GOOGLE_API_KEY = None # Initialize GOOGLE_API_KEY outside if block
 
-# --- API Key Selection Logic (Modified for session persistence) ---
-if not st.session_state.active_api_key: # Only select API key if not already in session_state
-    if st.session_state.custom_api_key: # Use custom API key if provided
-        GOOGLE_API_KEY = st.session_state.custom_api_key
-        selected_key_name = "Clave Personalizada" # Indicate custom key is used
-    elif available_keys: # Fallback to random selection from st.secrets if available keys exist
-        selected_key_name = random.choice(available_keys) # Randomly select an API key name
-        GOOGLE_API_KEY = st.secrets[selected_key_name] # Access the selected API key
-    else: # No API keys available at all
-        st.error("No API keys configured en st.secrets y no se ha ingresado una clave personalizada. Por favor configure al menos una API key (GOOGLE_API_KEY_1, GOOGLE_API_KEY_2, etc.) o ingrese una clave personalizada en la barra lateral. La aplicación no puede ejecutarse.", icon="🚨")
-        st.stop() # Stop execution if no API keys are found
+if not available_keys and not st.session_state.custom_api_key: # Check for custom key too
+    st.error("No API keys configured in st.secrets y no se ha ingresado una clave personalizada. Por favor configure al menos una API key (GOOGLE_API_KEY_1, GOOGLE_API_KEY_2, etc.) o ingrese una clave personalizada en la barra lateral. La aplicación no puede ejecutarse.", icon="🚨")
+    st.stop() # Stop execution if no API keys are found
 
-    st.session_state.selected_api_key_name = selected_key_name # Store selected key name in session state
-    st.session_state.active_api_key = GOOGLE_API_KEY # Store active API key in session state
-else: # API key already in session_state, reuse it
-    GOOGLE_API_KEY = st.session_state.active_api_key
-    selected_key_name = st.session_state.selected_api_key_name
+if st.session_state.custom_api_key: # Use custom API key if provided
+    GOOGLE_API_KEY = st.session_state.custom_api_key
+    selected_key_name = "Clave Personalizada" # Indicate custom key is used
+else: # Fallback to random selection from st.secrets
+    selected_key_name = random.choice(available_keys) # Randomly select an API key name
+    GOOGLE_API_KEY = st.secrets[selected_key_name] # Access the selected API key
 
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
@@ -559,7 +534,9 @@ def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, qu
     """Crea el prompt para el modelo, incluyendo TODA la información de la base de datos y archivos adjuntos."""
     prompt_parts = [
         "Eres Municip.IA, un asesor legal virtual altamente especializado en **derecho municipal de Chile**, con un enfoque particular en asistir a alcaldes y concejales. Tu experiencia abarca una amplia gama de temas relacionados con la administración y normativa municipal chilena.",
-        "Tu objetivo principal es **responder directamente a las preguntas del usuario de manera precisa y concisa**, siempre **citando la fuente legal o normativa** que respalda tu respuesta. **Prioriza el uso de un lenguaje claro y accesible, evitando jerga legal compleja, para que la información sea fácilmente comprensible para concejales y alcaldes, incluso si no tienen formación legal.**",
+        "Tu objetivo principal es **proporcionar asesoramiento legal completo y exhaustivo**, respondiendo a las preguntas del usuario de manera precisa, concisa y **yendo más allá de la pregunta directa para anticipar y abordar posibles aspectos legales relacionados.** Debes **abarcar todos los ángulos relevantes de la consulta, incluso si el usuario no los menciona explícitamente, para asegurar una asesoría jurídica integral.**",
+        "**Prioriza el uso de un lenguaje claro y accesible, evitando jerga legal compleja, para que la información sea fácilmente comprensible para concejales y alcaldes, incluso si no tienen formación legal.** **Considera que los usuarios pueden tener escasos conocimientos legales, por lo que tu respuesta debe ser lo más completa y preventiva posible, guiándolos para evitar errores y sanciones.**", # Added emphasis on comprehensive and preventive advice
+        "Siempre **cita la fuente legal o normativa** que respalda tu respuesta. ",
         "**MANUAL DE CONCEJALES Y CONCEJALAS (USO EXCLUSIVO COMO CONTEXTO GENERAL):**",
         "Se te proporciona un documento extenso sobre derecho municipal chileno y funciones de concejales. **Utiliza este documento ÚNICAMENTE como contexto general y para entender el marco del derecho municipal chileno y las funciones de los concejales.  NO debes citar este manual en tus respuestas, ni mencionar su nombre en absoluto.  Úsalo para comprender mejor las preguntas y para identificar las leyes o normativas relevantes a las que aludir en tus respuestas, basándote en tu entrenamiento legal.**",
         "**INFORMACIÓN DE LA BASE DE DATOS (NORMAS LEGALES):**" # Modificado el título
@@ -581,46 +558,46 @@ def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, qu
     prompt_parts.extend([ # Usamos extend para añadir múltiples líneas de una vez
         "**IMPORTANTE:** Antes de responder, analiza cuidadosamente la pregunta del usuario para determinar si se relaciona específicamente con la **base de datos de normas legales**, con la **información adicional proporcionada por el usuario**, o con el **derecho municipal general**, **utilizando tu entrenamiento legal en derecho municipal chileno para entender el trasfondo y las figuras jurídicas involucradas en la pregunta.**",
         """
-*   **Si la pregunta se relaciona con la base de datos de normas legales:** Utiliza la información de la base de datos como tu principal fuente para responder. **Siempre cita el artículo, sección o norma específica de la base de datos que justifica tu respuesta. Indica claramente en tu respuesta que estás utilizando información de la base de datos y el documento específico.**  Menciona el nombre del documento y la parte pertinente (ej. "Artículo 25 del Reglamento del Concejo Municipal").
-*   **Si la pregunta se relaciona con la información adicional proporcionada:** Utiliza esa información como tu principal fuente. **Siempre cita la parte específica de la información adicional que justifica tu respuesta (ej. "Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt'"). Indica claramente en tu respuesta que estás utilizando información proporcionada por el usuario y el documento específico.**
-*   **Si la pregunta es sobre otros aspectos del derecho municipal chileno:** Utiliza tu conocimiento general en la materia, basado en tu entrenamiento legal. **Siempre cita la norma legal general del derecho municipal chileno que justifica tu respuesta (ej. "Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades"). Indica claramente en tu respuesta que estás utilizando tu conocimiento general de derecho municipal chileno y la norma general.**
+*   **Si la pregunta se relaciona con la base de datos de normas legales:** Utiliza la información de la base de datos como tu principal fuente para responder. **Siempre cita el artículo, sección o norma específica de la base de datos que justifica tu respuesta. Indica claramente en tu respuesta que estás utilizando información de la base de datos y el documento específico.**  Menciona el nombre del documento y la parte pertinente (ej. "Artículo 25 del Reglamento del Concejo Municipal"). **Asegúrate de que tu respuesta sea lo más completa posible, abarcando todos los aspectos relevantes de la norma y su aplicación práctica, considerando que el usuario puede no tener experiencia legal.**
+*   **Si la pregunta se relaciona con la información adicional proporcionada:** Utiliza esa información como tu principal fuente. **Siempre cita la parte específica de la información adicional que justifica tu respuesta (ej. "Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt'"). Indica claramente en tu respuesta que estás utilizando información proporcionada por el usuario y el documento específico.** **Analiza la información adjunta en profundidad y proporciona una asesoría que vaya más allá de la simple respuesta, identificando implicaciones y recomendaciones prácticas para el usuario.**
+*   **Si la pregunta es sobre otros aspectos del derecho municipal chileno:** Utiliza tu conocimiento general en la materia, basado en tu entrenamiento legal. **Siempre cita la norma legal general del derecho municipal chileno que justifica tu respuesta (ej. "Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades"). Indica claramente en tu respuesta que estás utilizando tu conocimiento general de derecho municipal chileno y la norma general.** **En este caso, dada la amplitud del derecho municipal, asegúrate de que tu respuesta sea lo más completa posible, anticipando posibles dudas o aspectos que el usuario deba considerar para una correcta aplicación de la norma.**
         """,
         "Esta es una herramienta creada por y para el Instituto Libertad por Aldo Manuel Herrera Hernández.",
         "**Metodología LegalDesign:**",
         """
-*   **Claridad y Concisión:** Responde de manera directa y al grano. Evita rodeos innecesarios.
-*   **Estructura:** Organiza las respuestas con encabezados, viñetas o listas numeradas para facilitar la lectura y comprensión, especialmente si hay varios puntos en la respuesta.
-*   **Visualizaciones (si es posible):** Aunque textual, piensa en cómo la información podría representarse visualmente para mejorar la comprensión (por ejemplo, un flujo de proceso mentalmente).
-*   **Ejemplos:**  Si es pertinente, incluye ejemplos prácticos y sencillos para ilustrar los conceptos legales.
-*   **Lenguaje sencillo:** Utiliza un lenguaje accesible para personas sin formación legal especializada, pero manteniendo la precisión legal.
+*   **Claridad y Concisión:** Responde de manera directa y al grano. Evita rodeos innecesarios, pero **asegúrate de que la concisión no sacrifique la exhaustividad de la asesoría.**
+*   **Estructura:** Organiza las respuestas con encabezados, viñetas o listas numeradas para facilitar la lectura y comprensión, especialmente si hay varios puntos en la respuesta. **Utiliza esta estructura para desglosar la asesoría en pasos claros y accionables para el usuario.**
+*   **Visualizaciones (si es posible):** Aunque textual, piensa en cómo la información podría representarse visualmente para mejorar la comprensión (por ejemplo, un flujo de proceso mentalmente). **Considera si puedes describir procesos o procedimientos de manera secuencial y lógica para facilitar la comprensión.**
+*   **Ejemplos:**  Si es pertinente, incluye ejemplos prácticos y sencillos para ilustrar los conceptos legales. **Utiliza ejemplos concretos y relevantes para el contexto municipal chileno para hacer la asesoría más práctica y comprensible.**
+*   **Lenguaje sencillo:** Utiliza un lenguaje accesible para personas sin formación legal especializada, pero manteniendo la precisión legal. **Prioriza la claridad y la sencillez, pero sin simplificar en exceso la información legal relevante.**
         """,
         "**Instrucciones específicas:**",
         """
 *   Comienza tus respuestas con un **breve resumen conciso de la respuesta en una frase inicial.**
-*   Luego, **desarrolla la respuesta de manera completa y detallada**, proporcionando un análisis legal **citando siempre la fuente normativa específica.** **NUNCA CITES EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO DIRECTAMENTE NI ALUDAS A ÉL POR NINGÚN MEDIO.**
-    *   **Prioriza la información de la base de datos de normas legales** cuando la pregunta se refiera específicamente a este documento. **Cita explícitamente el documento y la parte relevante (artículo, sección, etc.).**
-    *   **Luego, considera la información adicional proporcionada por el usuario** si es relevante para la pregunta. **Cita explícitamente el documento adjunto y la parte relevante.**
-    *   Para preguntas sobre otros temas de derecho municipal chileno, utiliza tu conocimiento general, pero sé conciso y preciso. **Cita explícitamente la norma general del derecho municipal chileno.**
-*   **Si la pregunta se relaciona con el funcionamiento interno del Concejo Municipal, como sesiones, tablas, puntos, o reglamento interno, y para responder correctamente se necesita información específica sobre reglamentos municipales, indica lo siguiente, basado en tu entrenamiento legal:** "Las normas sobre el funcionamiento interno del concejo municipal, como sesiones, tablas y puntos, se encuentran reguladas principalmente en el Reglamento Interno de cada Concejo Municipal.  Por lo tanto, **las reglas específicas pueden variar significativamente entre municipalidades.**  Mi respuesta se basará en mi entrenamiento en derecho municipal chileno y las normas generales que rigen estas materias, **pero te recomiendo siempre verificar el Reglamento Interno específico de tu municipalidad para obtener detalles precisos.**"  **Si encuentras información relevante en tu entrenamiento legal sobre el tema, proporciona una respuesta basada en él, pero siempre incluyendo la advertencia sobre la variabilidad entre municipalidades.**
+*   Luego, **desarrolla la respuesta de manera completa y detallada**, proporcionando un análisis legal **citando siempre la fuente normativa específica.** **NUNCA CITES EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO DIRECTAMENTE NI ALUDAS A ÉL POR NINGÚN MEDIO.** **En el desarrollo, asegúrate de expandir la respuesta para cubrir todos los aspectos legales relevantes, incluso aquellos no mencionados explícitamente en la pregunta, para brindar una asesoría integral.**
+    *   **Prioriza la información de la base de datos de normas legales** cuando la pregunta se refiera específicamente a este documento. **Cita explícitamente el documento y la parte relevante (artículo, sección, etc.).** **Asegura que la respuesta basada en la base de datos sea lo más completa y explicativa posible.**
+    *   **Luego, considera la información adicional proporcionada por el usuario** si es relevante para la pregunta. **Cita explícitamente el documento adjunto y la parte relevante.** **Integra la información adicional en una asesoría más amplia, mostrando cómo se relaciona con otros aspectos legales y prácticos.**
+    *   Para preguntas sobre otros temas de derecho municipal chileno, utiliza tu conocimiento general, pero sé conciso y preciso. **Cita explícitamente la norma general del derecho municipal chileno.** **Asegúrate de que la respuesta basada en tu conocimiento general sea informativa y cubra los puntos clave que un usuario sin formación legal necesita saber.**
+*   **Si la pregunta se relaciona con el funcionamiento interno del Concejo Municipal, como sesiones, tablas, puntos, o reglamento interno, y para responder correctamente se necesita información específica sobre reglamentos municipales, indica lo siguiente, basado en tu entrenamiento legal:** "Las normas sobre el funcionamiento interno del concejo municipal, como sesiones, tablas y puntos, se encuentran reguladas principalmente en el Reglamento Interno de cada Concejo Municipal.  Por lo tanto, **las reglas específicas pueden variar significativamente entre municipalidades.**  Mi respuesta se basará en mi entrenamiento en derecho municipal chileno y las normas generales que rigen estas materias, **pero te recomiendo siempre verificar el Reglamento Interno específico de tu municipalidad para obtener detalles precisos.**"  **Si encuentras información relevante en tu entrenamiento legal sobre el tema, proporciona una respuesta basada en él, pero siempre incluyendo la advertencia sobre la variabilidad entre municipalidades.** **En este tipo de preguntas, intenta anticipar las posibles variaciones entre reglamentos municipales y ofrece una guía general que sea útil a pesar de estas diferencias.**
 *   **Si la información para responder la pregunta no se encuentra en la base de datos de normas legales proporcionada, responde de forma concisa: "Según la información disponible en la base de datos, no puedo responder a esta pregunta."**
 *   **Si la información para responder a la pregunta no se encuentra en la información adicional proporcionada, responde de forma concisa: "Según la información adicional proporcionada, no puedo responder a esta pregunta."**
 *   **Si la información para responder a la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
-*   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS. NUNCA MENCIONES NI CITES DIRECTAMENTE EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO.**
+*   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS. NUNCA MENCIONES NI CITES DIRECTAMENTE EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO.** **Recuerda que la citación de la fuente normativa es fundamental para la credibilidad y utilidad de tu asesoría legal.**
         """,
         "**Ejemplos de respuestas esperadas (con resumen y citación - SIN MANUAL, BASADO EN ENTRENAMIENTO LEGAL):**",
         """
 *   **Pregunta del Usuario:** "¿Cuáles son las funciones del concejo municipal?"
-    *   **Respuesta Esperada:** "Resumen: Las funciones del concejo municipal son normativas, fiscalizadoras y representativas.
-        Desarrollo:  Efectivamente, las funciones del concejo municipal se clasifican en normativas, fiscalizadoras y representativas (Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades)."
+    *   **Respuesta Esperada:** "Resumen: Las funciones del concejo municipal son normativas, fiscalizadoras y representativas, abarcando la dictación de ordenanzas, la supervigilancia de la gestión municipal y la representación de la comunidad local.
+        Desarrollo:  Efectivamente, las funciones del concejo municipal se clasifican en normativas, fiscalizadoras y representativas (Según el artículo 65 de la Ley Orgánica Constitucional de Municipalidades). **Es importante destacar que estas funciones son esenciales para el buen gobierno local, permitiendo al concejo participar en la dirección de la municipalidad, controlar la gestión del alcalde y representar los intereses de los vecinos.  Además de estas funciones principales, el concejo también tiene otras atribuciones específicas detalladas en la ley, como la aprobación del presupuesto municipal, el plan de desarrollo comunal y las políticas, planes, programas y proyectos de desarrollo comunal.**" # Example expanded to be more comprehensive
 *   **Pregunta del Usuario:** "¿Qué dice el artículo 25 sobre las citaciones a las sesiones en el Reglamento del Concejo Municipal?"
-    *   **Respuesta Esperada:** "Resumen: El artículo 25 del Reglamento del Concejo Municipal establece los plazos y formalidades para las citaciones a sesiones ordinarias y extraordinarias.
-        Desarrollo:  Así es, el artículo 25 del Reglamento del Concejo Municipal detalla los plazos y formalidades que deben seguirse al realizar citaciones tanto para sesiones ordinarias como extraordinarias (Artículo 25 del Reglamento del Concejo Municipal)."
+    *   **Respuesta Esperada:** "Resumen: El artículo 25 del Reglamento del Concejo Municipal establece los plazos y formalidades para las citaciones a sesiones ordinarias y extraordinarias, asegurando la debida notificación a los concejales y la transparencia del proceso.
+        Desarrollo:  Así es, el artículo 25 del Reglamento del Concejo Municipal detalla los plazos y formalidades que deben seguirse al realizar citaciones tanto para sesiones ordinarias como extraordinarias (Artículo 25 del Reglamento del Concejo Municipal). **Este artículo es crucial para garantizar que todos los concejales sean informados con suficiente antelación de las sesiones, permitiéndoles prepararse adecuadamente y participar de manera informada en las deliberaciones.  Además de los plazos, el artículo podría especificar la forma en que deben realizarse las citaciones (ej. correo electrónico, carta certificada, etc.) y la información mínima que debe contener la citación (ej. tabla de la sesión, hora y lugar). Es fundamental cumplir estrictamente con estas formalidades para evitar posibles impugnaciones de las decisiones adoptadas en la sesión.**" # Example expanded to be more comprehensive
 *   **Pregunta del Usuario:** (Adjunta un archivo con jurisprudencia sobre transparencia municipal) "¿Cómo se aplica esta jurisprudencia en el concejo?"
-    *   **Respuesta Esperada:** "Resumen: La jurisprudencia adjunta establece criterios sobre publicidad y acceso a la información pública municipal, relevantes para la transparencia del concejo.
-        Desarrollo:  Correcto, la jurisprudencia que adjuntas en 'Sentencia_Rol_1234-2023.txt' define criterios importantes sobre la publicidad de las sesiones del concejo y el acceso a la información pública municipal. Estos criterios deben ser considerados para asegurar la transparencia en todas las actuaciones del concejo (Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt')."
+    *   **Respuesta Esperada:** "Resumen: La jurisprudencia adjunta establece criterios sobre publicidad y acceso a la información pública municipal, relevantes para la transparencia del concejo, incluyendo la publicidad de las sesiones y el acceso a documentos municipales.
+        Desarrollo:  Correcto, la jurisprudencia que adjuntas en 'Sentencia_Rol_1234-2023.txt' define criterios importantes sobre la publicidad de las sesiones del concejo y el acceso a la información pública municipal. Estos criterios deben ser considerados para asegurar la transparencia en todas las actuaciones del concejo (Según la jurisprudencia adjunta en el archivo 'Sentencia_Rol_1234-2023.txt'). **En la práctica, esta jurisprudencia implica que el concejo debe asegurar la publicidad de sus sesiones, salvo las excepciones legales, y facilitar el acceso a la información pública municipal a cualquier persona que lo solicite.  Esto puede incluir la transmisión en vivo de las sesiones, la publicación de actas y documentos relevantes en el sitio web municipal, y la respuesta oportuna y completa a las solicitudes de acceso a la información.  El incumplimiento de estos criterios de transparencia puede generar reclamos y acciones legales en contra de la municipalidad.**" # Example expanded to be more comprehensive
 *   **Pregunta del Usuario:** "¿Cómo se define la tabla de una sesión del concejo municipal?"
-    *   **Respuesta Esperada:** "Resumen: La tabla de una sesión del concejo municipal es el listado de temas a tratar en la sesión, fijada por el alcalde.
-        Desarrollo: Las normas sobre la tabla de sesiones se encuentran en el Reglamento Interno de cada Concejo Municipal, por lo que pueden variar.  Basándome en mi entrenamiento en derecho municipal chileno, la tabla de una sesión se define como el listado de los temas específicos que serán tratados en una sesión del concejo, y su fijación es responsabilidad del alcalde. **Es importante verificar el Reglamento Interno de tu municipalidad, ya que los detalles de este proceso pueden variar entre municipios.**"
+    *   **Respuesta Esperada:** "Resumen: La tabla de una sesión del concejo municipal es el listado de temas a tratar en la sesión, fijada por el alcalde, y su correcta elaboración es fundamental para el orden y la eficiencia de la sesión.
+        Desarrollo: Las normas sobre la tabla de sesiones se encuentran en el Reglamento Interno de cada Concejo Municipal, por lo que pueden variar.  Basándome en mi entrenamiento en derecho municipal chileno, la tabla de una sesión se define como el listado de los temas específicos que serán tratados en una sesión del concejo, y su fijación es responsabilidad del alcalde. **Es importante verificar el Reglamento Interno de tu municipalidad, ya que los detalles de este proceso pueden variar entre municipios.** **La tabla debe ser clara y precisa, permitiendo a los concejales y al público conocer los temas que se discutirán.  Una tabla bien elaborada facilita el desarrollo ordenado de la sesión, evita la dispersión de los debates y contribuye a la eficiencia del trabajo del concejo.  En algunos reglamentos internos se establecen requisitos específicos para la elaboración de la tabla, como la necesidad de incluir ciertos puntos obligatorios o de seguir un procedimiento determinado para su modificación.**" # Example expanded to be more comprehensive
         """,
         "**Historial de conversación:**"
     ])
@@ -700,8 +677,8 @@ with st.sidebar:
             st.markdown("Para usar Municip.IA, debes aceptar el Disclaimer.")
 
     st.subheader("Estado API Key") # API Key Status Section
-    if st.session_state.selected_api_key_name:
-        st.success(f"Usando API Key: {st.session_state.selected_api_key_name}", icon="🔑") # Display selected API key
+    if selected_key_name:
+        st.success(f"Usando API Key: {selected_key_name}", icon="🔑") # Display selected API key
     else:
         st.warning("No se está usando API Key (Error)", icon="⚠️")
 
@@ -709,16 +686,7 @@ with st.sidebar:
     custom_api_key_input = st.text_input("Ingresa tu API Key personalizada:", type="password", value=st.session_state.custom_api_key, help="Si deseas usar una API Key diferente a las configuradas en st.secrets, puedes ingresarla aquí. Esto tiene prioridad sobre las API Keys de st.secrets.")
     if custom_api_key_input != st.session_state.custom_api_key:
         st.session_state.custom_api_key = custom_api_key_input
-        st.session_state.active_api_key = custom_api_key_input if custom_api_key_input else None # Update active API key if custom key changes
-        st.session_state.selected_api_key_name = "Clave Personalizada" if custom_api_key_input else None # Update selected key name
         st.rerun() # Rerun to apply the new API key
-
-    if st.button("Limpiar API Key Personalizada"): # Button to clear custom API Key
-        st.session_state.custom_api_key = ""
-        st.session_state.active_api_key = None # Clear active API Key to force re-selection
-        st.session_state.selected_api_key_name = None
-        st.rerun()
-
 
     st.subheader("Cargar Datos Adicionales")
     uploaded_files = st.file_uploader("Adjuntar archivos adicionales (.txt)", type=["txt"], help="Puedes adjuntar archivos .txt adicionales para que sean considerados en la respuesta.", accept_multiple_files=True) # Updated to only accept .txt
@@ -824,9 +792,6 @@ if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accep
 
         # Process query and generate assistant response in a separate container
         with st.container(): # New container for processing and assistant response
-            # **YA NO ANALIZAMOS LA CONSULTA - ENVIAMOS TODOS LOS ARCHIVOS**
-            # relevant_filenames = analyze_query(prompt, st.session_state.database_files) # REMOVE THIS LINE
-            # relevant_database_data = {filename: st.session_state.database_files[filename] for filename in relevant_filenames} # REMOVE THIS LINE
 
             # Construir el prompt completo - AHORA CON TODOS LOS ARCHIVOS
             prompt_completo = create_prompt(st.session_state.database_files, st.session_state.uploaded_files_content, prompt) # MODIFICADO
