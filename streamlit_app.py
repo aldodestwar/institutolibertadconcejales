@@ -460,7 +460,7 @@ else: # Fallback to random selection from st.secrets
     GOOGLE_API_KEY = st.secrets[selected_key_name] # Access the selected API key
 
 genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
+model = genai.GenerativeModel('gemini-2.0-flash-lite')
 
 # --- Funciones para cargar y procesar archivos ---
 
