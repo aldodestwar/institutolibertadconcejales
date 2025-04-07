@@ -19,6 +19,12 @@ if "password_input" not in st.session_state:
 if "custom_api_key" not in st.session_state:
     st.session_state.custom_api_key = "" # Initialize custom API key state
 
+# --- API Key Session State ---
+if "selected_api_key_name" not in st.session_state:
+    st.session_state.selected_api_key_name = None
+if "active_api_key" not in st.session_state:
+    st.session_state.active_api_key = None
+
 # --- Initial Screen (Password and Disclaimer - Single Step) ---
 if not st.session_state.disclaimer_accepted:
     initial_screen_placeholder = st.empty()
@@ -452,16 +458,23 @@ available_keys = get_available_api_keys()
 selected_key_name = None # Initialize selected_key_name outside if block
 GOOGLE_API_KEY = None # Initialize GOOGLE_API_KEY outside if block
 
-if not available_keys and not st.session_state.custom_api_key: # Check for custom key too
-    st.error("No API keys configured in st.secrets y no se ha ingresado una clave personalizada. Por favor configure al menos una API key (GOOGLE_API_KEY_1, GOOGLE_API_KEY_2, etc.) o ingrese una clave personalizada en la barra lateral. La aplicación no puede ejecutarse.", icon="🚨")
-    st.stop() # Stop execution if no API keys are found
+# --- API Key Selection Logic (Modified for session persistence) ---
+if not st.session_state.active_api_key: # Only select API key if not already in session_state
+    if st.session_state.custom_api_key: # Use custom API key if provided
+        GOOGLE_API_KEY = st.session_state.custom_api_key
+        selected_key_name = "Clave Personalizada" # Indicate custom key is used
+    elif available_keys: # Fallback to random selection from st.secrets if available keys exist
+        selected_key_name = random.choice(available_keys) # Randomly select an API key name
+        GOOGLE_API_KEY = st.secrets[selected_key_name] # Access the selected API key
+    else: # No API keys available at all
+        st.error("No API keys configured en st.secrets y no se ha ingresado una clave personalizada. Por favor configure al menos una API key (GOOGLE_API_KEY_1, GOOGLE_API_KEY_2, etc.) o ingrese una clave personalizada en la barra lateral. La aplicación no puede ejecutarse.", icon="🚨")
+        st.stop() # Stop execution if no API keys are found
 
-if st.session_state.custom_api_key: # Use custom API key if provided
-    GOOGLE_API_KEY = st.session_state.custom_api_key
-    selected_key_name = "Clave Personalizada" # Indicate custom key is used
-else: # Fallback to random selection from st.secrets
-    selected_key_name = random.choice(available_keys) # Randomly select an API key name
-    GOOGLE_API_KEY = st.secrets[selected_key_name] # Access the selected API key
+    st.session_state.selected_api_key_name = selected_key_name # Store selected key name in session state
+    st.session_state.active_api_key = GOOGLE_API_KEY # Store active API key in session state
+else: # API key already in session_state, reuse it
+    GOOGLE_API_KEY = st.session_state.active_api_key
+    selected_key_name = st.session_state.selected_api_key_name
 
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
@@ -591,7 +604,7 @@ def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, qu
 *   **Si la pregunta se relaciona con el funcionamiento interno del Concejo Municipal, como sesiones, tablas, puntos, o reglamento interno, y para responder correctamente se necesita información específica sobre reglamentos municipales, indica lo siguiente, basado en tu entrenamiento legal:** "Las normas sobre el funcionamiento interno del concejo municipal, como sesiones, tablas y puntos, se encuentran reguladas principalmente en el Reglamento Interno de cada Concejo Municipal.  Por lo tanto, **las reglas específicas pueden variar significativamente entre municipalidades.**  Mi respuesta se basará en mi entrenamiento en derecho municipal chileno y las normas generales que rigen estas materias, **pero te recomiendo siempre verificar el Reglamento Interno específico de tu municipalidad para obtener detalles precisos.**"  **Si encuentras información relevante en tu entrenamiento legal sobre el tema, proporciona una respuesta basada en él, pero siempre incluyendo la advertencia sobre la variabilidad entre municipalidades.**
 *   **Si la información para responder la pregunta no se encuentra en la base de datos de normas legales proporcionada, responde de forma concisa: "Según la información disponible en la base de datos, no puedo responder a esta pregunta."**
 *   **Si la información para responder a la pregunta no se encuentra en la información adicional proporcionada, responde de forma concisa: "Según la información adicional proporcionada, no puedo responder a esta pregunta."**
-*   **Si la información para responder la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
+*   **Si la información para responder a la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
 *   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS. NUNCA MENCIONES NI CITES DIRECTAMENTE EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO.**
         """,
         "**Ejemplos de respuestas esperadas (con resumen y citación - SIN MANUAL, BASADO EN ENTRENAMIENTO LEGAL):**",
@@ -687,8 +700,8 @@ with st.sidebar:
             st.markdown("Para usar Municip.IA, debes aceptar el Disclaimer.")
 
     st.subheader("Estado API Key") # API Key Status Section
-    if selected_key_name:
-        st.success(f"Usando API Key: {selected_key_name}", icon="🔑") # Display selected API key
+    if st.session_state.selected_api_key_name:
+        st.success(f"Usando API Key: {st.session_state.selected_api_key_name}", icon="🔑") # Display selected API key
     else:
         st.warning("No se está usando API Key (Error)", icon="⚠️")
 
@@ -696,7 +709,16 @@ with st.sidebar:
     custom_api_key_input = st.text_input("Ingresa tu API Key personalizada:", type="password", value=st.session_state.custom_api_key, help="Si deseas usar una API Key diferente a las configuradas en st.secrets, puedes ingresarla aquí. Esto tiene prioridad sobre las API Keys de st.secrets.")
     if custom_api_key_input != st.session_state.custom_api_key:
         st.session_state.custom_api_key = custom_api_key_input
+        st.session_state.active_api_key = custom_api_key_input if custom_api_key_input else None # Update active API key if custom key changes
+        st.session_state.selected_api_key_name = "Clave Personalizada" if custom_api_key_input else None # Update selected key name
         st.rerun() # Rerun to apply the new API key
+
+    if st.button("Limpiar API Key Personalizada"): # Button to clear custom API Key
+        st.session_state.custom_api_key = ""
+        st.session_state.active_api_key = None # Clear active API Key to force re-selection
+        st.session_state.selected_api_key_name = None
+        st.rerun()
+
 
     st.subheader("Cargar Datos Adicionales")
     uploaded_files = st.file_uploader("Adjuntar archivos adicionales (.txt)", type=["txt"], help="Puedes adjuntar archivos .txt adicionales para que sean considerados en la respuesta.", accept_multiple_files=True) # Updated to only accept .txt
