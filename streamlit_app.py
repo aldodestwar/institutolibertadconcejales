@@ -23,7 +23,7 @@ if "custom_api_key" not in st.session_state:
 if not st.session_state.disclaimer_accepted:
     initial_screen_placeholder = st.empty()
     with initial_screen_placeholder.container():
-        st.title("Acceso al Asesor Legal Municipal IA")
+        st.title("Acceso a Municip.IA")
         # Removed password input
         # password = st.text_input("Ingrese la clave de usuario", type="password", value=st.session_state.password_input) # Persist input
 
@@ -42,7 +42,7 @@ if not st.session_state.disclaimer_accepted:
             st.markdown("""
             **Descargo de Responsabilidad Completo:**
 
-            Este Asesor Legal Municipal IA es una herramienta de inteligencia artificial en fase de desarrollo beta. Como tal, es fundamental comprender y aceptar las siguientes condiciones antes de continuar:
+            Este Municip.IA es una herramienta de inteligencia artificial en fase de desarrollo beta. Como tal, es fundamental comprender y aceptar las siguientes condiciones antes de continuar:
 
             1.  **Naturaleza Beta y Posibles Errores:** La herramienta se encuentra en etapa de prueba y aprendizaje. Aunque se ha diseñado para proporcionar información útil y relevante sobre derecho municipal chileno, **puede cometer errores o entregar información incompleta o inexacta.** No debe considerarse infalible ni sustituir el juicio profesional de un abogado especializado.
 
@@ -68,7 +68,7 @@ if not st.session_state.disclaimer_accepted:
 
 # --- Configuración de la página ---
 st.set_page_config(
-    page_title="Asesor Legal Municipal IA - Instituto Libertad",
+    page_title="Municip.IA - Instituto Libertad",
     page_icon="⚖️",
     layout="wide",
     initial_sidebar_state="collapsed" # Changed to "collapsed"
@@ -259,7 +259,7 @@ st.markdown(
         height: 120px;
         border-radius: 50%;
         overflow: hidden;
-        background-image: url('https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo');
+        background-image: url('https://i.postimg.cc/RZpJb6rq/IMG-20250407-WA0009-1.png')
         background-size: cover;
         background-position: center;
         margin-bottom: 1.2em;
@@ -404,11 +404,11 @@ st.markdown(
 if st.session_state.disclaimer_accepted:
     disclaimer_status_main_expander = st.expander("Disclaimer Aceptado - Clic para revisar o revocar", expanded=False)
     with disclaimer_status_main_expander:
-        st.success("Disclaimer Aceptado. Puede usar el Asesor Legal Municipal IA.", icon="✅")
+        st.success("Disclaimer Aceptado. Puede usar Municip.IA.", icon="✅")
         st.markdown("""
                 **Descargo de Responsabilidad Completo:**
 
-                Este Asesor Legal Municipal IA es una herramienta de inteligencia artificial en fase de desarrollo beta. Como tal, es fundamental comprender y aceptar las siguientes condiciones antes de continuar:
+                Este Municip.IA es una herramienta de inteligencia artificial en fase de desarrollo beta. Como tal, es fundamental comprender y aceptar las siguientes condiciones antes de continuar:
 
                 1.  **Naturaleza Beta y Posibles Errores:** La herramienta se encuentra en etapa de prueba y aprendizaje. Aunque se ha diseñado para proporcionar información útil y relevante sobre derecho municipal chileno, **puede cometer errores o entregar información incompleta o inexacta.** No debe considerarse infalible ni sustituir el juicio profesional de un abogado especializado.
 
@@ -429,9 +429,9 @@ if st.session_state.disclaimer_accepted:
 # --- Título principal y Subtítulo con Logo ---
 col_logo, col_title = st.columns([0.1, 0.9]) # Adjust ratios as needed
 with col_logo:
-    st.image("https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo", width=80) # Adjust width as needed
+    st.image("https://i.postimg.cc/RZpJb6rq/IMG-20250407-WA0009-1.png", width=80) # Adjust width as needed
 with col_title:
-    st.markdown('<h1 class="main-title">Asesor Legal Municipal IA</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-title">Municip.IA</h1>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">Instituto Libertad</p>', unsafe_allow_html=True)
 
 # --- API Key Selection Logic ---
@@ -545,7 +545,7 @@ def discover_and_load_files(directory: str) -> Dict[str, str]:
 def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, query: str) -> str:
     """Crea el prompt para el modelo, incluyendo TODA la información de la base de datos y archivos adjuntos."""
     prompt_parts = [
-        "Eres un asesor legal virtual altamente especializado en **derecho municipal de Chile**, con un enfoque particular en asistir a alcaldes y concejales. Tu experiencia abarca una amplia gama de temas relacionados con la administración y normativa municipal chilena.",
+        "Eres Municip.IA, un asesor legal virtual altamente especializado en **derecho municipal de Chile**, con un enfoque particular en asistir a alcaldes y concejales. Tu experiencia abarca una amplia gama de temas relacionados con la administración y normativa municipal chilena.",
         "Tu objetivo principal es **responder directamente a las preguntas del usuario de manera precisa y concisa**, siempre **citando la fuente legal o normativa** que respalda tu respuesta. **Prioriza el uso de un lenguaje claro y accesible, evitando jerga legal compleja, para que la información sea fácilmente comprensible para concejales y alcaldes, incluso si no tienen formación legal.**",
         "**MANUAL DE CONCEJALES Y CONCEJALAS (USO EXCLUSIVO COMO CONTEXTO GENERAL):**",
         "Se te proporciona un documento extenso sobre derecho municipal chileno y funciones de concejales. **Utiliza este documento ÚNICAMENTE como contexto general y para entender el marco del derecho municipal chileno y las funciones de los concejales.  NO debes citar este manual en tus respuestas, ni mencionar su nombre en absoluto.  Úsalo para comprender mejor las preguntas y para identificar las leyes o normativas relevantes a las que aludir en tus respuestas, basándote en tu entrenamiento legal.**",
@@ -590,7 +590,7 @@ def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, qu
     *   Para preguntas sobre otros temas de derecho municipal chileno, utiliza tu conocimiento general, pero sé conciso y preciso. **Cita explícitamente la norma general del derecho municipal chileno.**
 *   **Si la pregunta se relaciona con el funcionamiento interno del Concejo Municipal, como sesiones, tablas, puntos, o reglamento interno, y para responder correctamente se necesita información específica sobre reglamentos municipales, indica lo siguiente, basado en tu entrenamiento legal:** "Las normas sobre el funcionamiento interno del concejo municipal, como sesiones, tablas y puntos, se encuentran reguladas principalmente en el Reglamento Interno de cada Concejo Municipal.  Por lo tanto, **las reglas específicas pueden variar significativamente entre municipalidades.**  Mi respuesta se basará en mi entrenamiento en derecho municipal chileno y las normas generales que rigen estas materias, **pero te recomiendo siempre verificar el Reglamento Interno específico de tu municipalidad para obtener detalles precisos.**"  **Si encuentras información relevante en tu entrenamiento legal sobre el tema, proporciona una respuesta basada en él, pero siempre incluyendo la advertencia sobre la variabilidad entre municipalidades.**
 *   **Si la información para responder la pregunta no se encuentra en la base de datos de normas legales proporcionada, responde de forma concisa: "Según la información disponible en la base de datos, no puedo responder a esta pregunta."**
-*   **Si la información para responder la pregunta no se encuentra en la información adicional proporcionada, responde de forma concisa: "Según la información adicional proporcionada, no puedo responder a esta pregunta."**
+*   **Si la información para responder a la pregunta no se encuentra en la información adicional proporcionada, responde de forma concisa: "Según la información adicional proporcionada, no puedo responder a esta pregunta."**
 *   **Si la información para responder la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
 *   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS. NUNCA MENCIONES NI CITES DIRECTAMENTE EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO.**
         """,
@@ -642,7 +642,7 @@ database_files_loaded_count = load_database_files_on_startup()
 # --- Inicializar el estado de la sesión ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    st.session_state.messages.append({"role": "assistant", "content": "¡Hola! Soy tu asesor legal IA especializado en derecho municipal. Esta es una herramienta del Instituto Libertad diseñada para guiar en las funciones de alcalde y concejales, sirviendo como apoyo, pero NO como reemplazo del asesoramiento de un abogado especializado en derecho público. Estoy listo para analizar tus consultas. ¿En qué puedo ayudarte hoy?"})
+    st.session_state.messages.append({"role": "assistant", "content": "¡Hola! Soy Municip.IA, tu asesor legal IA especializado en derecho municipal. Esta es una herramienta del Instituto Libertad diseñada para guiar en las funciones de alcalde y concejales, sirviendo como apoyo, pero NO como reemplazo del asesoramiento de un abogado especializado en derecho público. Estoy listo para analizar tus consultas. ¿En qué puedo ayudarte hoy?"})
 
 if "saved_conversations" not in st.session_state:
     st.session_state.saved_conversations = {}
@@ -684,7 +684,7 @@ with st.sidebar:
                 st.rerun()
         else:
             st.warning("Disclaimer No Aceptado", icon="⚠️")
-            st.markdown("Para usar el Asesor Legal, debes aceptar el Disclaimer.")
+            st.markdown("Para usar Municip.IA, debes aceptar el Disclaimer.")
 
     st.subheader("Estado API Key") # API Key Status Section
     if selected_key_name:
@@ -758,9 +758,9 @@ with st.sidebar:
 
     st.markdown("---")
     st.header("Acerca de")
-    st.markdown("Este asesor legal virtual fue creado por Aldo Manuel Herrera Hernández para el **Instituto Libertad** y se especializa en asesoramiento en derecho administrativo y municipal de **Chile**, basándose en la información que le proporciones.")
+    st.markdown("Este asesor legal virtual fue creado por Aldo Manuel Herrera Hernández para el **Instituto Libertad** y se especializa en asesoramiento en derecho administrativo y municipal de **Chile**.")
     st.markdown("Esta herramienta es desarrollada por el **Instituto Libertad**.")
-    st.markdown("La información proporcionada aquí se basa en el contenido de los archivos .txt que cargues como base de datos del reglamento y los archivos adicionales que adjuntes, y no reemplaza el asesoramiento legal profesional.") # Updated description to remove PDF
+    st.markdown("La información suministrada se basa en el conocimiento jurídico previo del sistema, incorporando la documentación que usted aporte. Se deja expresa constancia que esta herramienta no sustituye el asesoramiento legal profesional.")
     st.markdown("---")
     st.markdown("**Instituto Libertad**")
     st.markdown("[Sitio Web](https://www.institutolibertad.cl)")
@@ -789,7 +789,7 @@ if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accep
             if message["role"] == "user":
                 st.markdown(f'<div class="chat-message user-message"><div class="message-content">{message["content"]}</div></div>', unsafe_allow_html=True)
             else:
-                with st.chat_message("assistant", avatar="https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo"): # Moved avatar here
+                with st.chat_message("assistant", avatar="https://i.postimg.cc/K853Hw5Y/IMG-20250407-WA0005-2.png"): # Moved avatar here
                     st.markdown(f'<div class="message-content">{message["content"]}</div>', unsafe_allow_html=True)
 
     # --- Campo de entrada para el usuario ---
@@ -809,7 +809,7 @@ if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accep
             # Construir el prompt completo - AHORA CON TODOS LOS ARCHIVOS
             prompt_completo = create_prompt(st.session_state.database_files, st.session_state.uploaded_files_content, prompt) # MODIFICADO
 
-            with st.chat_message("assistant", avatar="https://media.licdn.com/dms/image/v2/C560BAQGtGwxopZ2xDw/company-logo_200_200/company-logo_200_200/0/1663009661966/instituto_libertad_logo?e=2147483647&v=beta&t=0HUEf9MKb_nAq7S1XN76Dce2CVp1xaE_aK5NndktnKo"):
+            with st.chat_message("assistant", avatar="https://i.postimg.cc/K853Hw5Y/IMG-20250407-WA0005-2.png"):
                 message_placeholder = st.empty()
                 full_response = ""
                 is_typing = True  # Indicar que el asistente está "escribiendo"
@@ -872,4 +872,4 @@ if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accep
 
                 st.session_state.messages.append({"role": "assistant", "content": full_response})
 else: # Disclaimer not accepted, show message instead of chat
-    st.warning("Para usar el Asesor Legal Municipal IA, debes aceptar el Disclaimer en la barra lateral.", icon="⚠️")
+    st.warning("Para usar Municip.IA, debes aceptar el Disclaimer en la barra lateral.", icon="⚠️")
