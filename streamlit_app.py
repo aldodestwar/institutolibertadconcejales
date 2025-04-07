@@ -764,7 +764,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**Instituto Libertad**")
     st.markdown("[Sitio Web](https://www.institutolibertad.cl)")
-    st.markdown("[Contacto](mailto:contacto@institutolibertad.cl)")
+    st.markdown("[Contacto](comunicaciones@institutolibertad.cl)")
 
     st.subheader("Datos Cargados")
     if st.session_state.database_files:
