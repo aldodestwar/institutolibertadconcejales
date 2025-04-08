@@ -8,7 +8,34 @@ from pathlib import Path
 from typing import List, Dict
 import hashlib
 import random # Import random module
+import pandas as pd  # Import pandas for Excel handling
+import datetime  # Import datetime for timestamps
 
+# --- Constants ---
+EXCEL_FILE_NAME = "QYA.xlsx"
+
+# --- Function to log Q&A to Excel ---
+def log_qya_to_excel(question: str, answer: str):
+    """Logs the question and answer to an Excel file with timestamp."""
+    now = datetime.datetime.now()
+    timestamp_str = now.strftime("%Y-%m-%d %H:%M:%S")
+    new_data = pd.DataFrame({
+        'Timestamp': [timestamp_str],
+        'Question': [question],
+        'Answer': [answer]
+    })
+
+    try:
+        if os.path.exists(EXCEL_FILE_NAME):
+            existing_data = pd.read_excel(EXCEL_FILE_NAME)
+            updated_data = pd.concat([existing_data, new_data], ignore_index=True)
+        else:
+            updated_data = new_data
+
+        updated_data.to_excel(EXCEL_FILE_NAME, index=False)
+        print(f"Q&A logged to {EXCEL_FILE_NAME} at {timestamp_str}") # Optional log to console
+    except Exception as e:
+        print(f"Error logging to Excel: {e}") # Optional error log to console
 
 
 # --- Password and Disclaimer State ---
@@ -598,7 +625,7 @@ def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, qu
 *   **Si la pregunta se relaciona con el funcionamiento interno del Concejo Municipal, como sesiones, tablas, puntos, o reglamento interno, y para responder correctamente se necesita información específica sobre reglamentos municipales, indica lo siguiente, basado en tu entrenamiento legal:** "Las normas sobre el funcionamiento interno del concejo municipal, como sesiones, tablas y puntos, se encuentran reguladas principalmente en el Reglamento Interno de cada Concejo Municipal.  Por lo tanto, **las reglas específicas pueden variar significativamente entre municipalidades.**  Mi respuesta se basará en mi entrenamiento en derecho municipal chileno y las normas generales que rigen estas materias, **pero te recomiendo siempre verificar el Reglamento Interno específico de tu municipalidad para obtener detalles precisos.**"  **Si encuentras información relevante en tu entrenamiento legal sobre el tema, proporciona una respuesta basada en él, pero siempre incluyendo la advertencia sobre la variabilidad entre municipalidades.**
 *   **Si la información para responder la pregunta no se encuentra en la base de datos de normas legales proporcionada, responde de forma concisa: "Según la información disponible en la base de datos, no puedo responder a esta pregunta."**
 *   **Si la información para responder a la pregunta no se encuentra en la información adicional proporcionada, responde de forma concisa: "Según la información adicional proporcionada, no puedo responder a esta pregunta."**
-*   **Si la información para responder la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
+*   **Si la información para responder a la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
 *   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS. NUNCA MENCIONES NI CITES DIRECTAMENTE EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO.**
         """,
         "**Ejemplos de respuestas esperadas (con resumen y citación - SIN MANUAL, BASADO EN ENTRENAMIENTO LEGAL):**",
@@ -869,6 +896,9 @@ if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accep
                     typing_placeholder.empty()  # Eliminar "escribiendo..." al finalizar
                     is_typing = False
                     message_placeholder.markdown(full_response)
+
+                    # Log Q&A to Excel after getting the full response
+                    log_qya_to_excel(prompt, full_response)
 
 
                 except Exception as e:
