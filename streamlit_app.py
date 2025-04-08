@@ -9,6 +9,8 @@ from typing import List, Dict
 import hashlib
 import random # Import random module
 
+
+
 # --- Password and Disclaimer State ---
 if "authentication_successful" not in st.session_state:
     st.session_state.authentication_successful = True # Set to True to bypass password
@@ -78,6 +80,11 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+    /* Ocultar el logo de GitHub */
+    .fork-ribbon {
+        display: none !important;
+    }
+
     /* --- Variables de color para fácil modificación --- */
     :root {
         --primary-color: #004488; /* Dark Blue -  MATCHING WEBSITE HEADER BLUE */
