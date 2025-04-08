@@ -8,82 +8,8 @@ from pathlib import Path
 from typing import List, Dict
 import hashlib
 import random # Import random module
-import pandas as pd  # Import pandas for Excel handling
-import datetime  # Import datetime for timestamps
-
-# --- Constants ---
-EXCEL_FILE_NAME = "QYA.xlsx"
-WRITABLE_DIR = None  # Variable para almacenar el directorio writable
-
-# --- Function to test write permissions and find a writable directory ---
-def test_write_permission():
-    """Tests write permission in current directory and /tmp, returns writable dir or None."""
-    global WRITABLE_DIR # Use the global variable
-
-    # Test current directory
-    try:
-        test_filepath_current_dir = "streamlit_write_test.txt"
-        with open(test_filepath_current_dir, "w") as f:
-            f.write("This is a write permission test in current directory.")
-        os.remove(test_filepath_current_dir) # Clean up test file
-        print("Write permission test: Current directory - SUCCESS")
-        WRITABLE_DIR = "." # Current directory is writable
-        return "." # Return current directory path
-    except Exception as e:
-        print(f"Write permission test: Current directory - FAIL: {e}")
-
-    # Test /tmp directory
-    try:
-        test_filepath_tmp = "/tmp/streamlit_write_test.txt"
-        with open(test_filepath_tmp, "w") as f:
-            f.write("This is a write permission test in /tmp directory.")
-        os.remove(test_filepath_tmp) # Clean up test file
-        print("Write permission test: /tmp directory - SUCCESS")
-        WRITABLE_DIR = "/tmp" # /tmp is writable
-        return "/tmp" # Return /tmp path
-    except Exception as e:
-        print(f"Write permission test: /tmp directory - FAIL: {e}")
-
-    print("No writable directory found for Excel logging.")
-    WRITABLE_DIR = None # No writable directory found
-    return None # Return None if no writable directory found
 
 
-# --- Function to log Q&A to Excel ---
-def log_qya_to_excel(question: str, answer: str):
-    """Logs the question and answer to an Excel file with timestamp, using WRITABLE_DIR."""
-    global WRITABLE_DIR # Use the global variable
-
-    if WRITABLE_DIR is None:
-        print("Excel logging is disabled due to no writable directory.") # Inform user if logging is disabled
-        return
-
-    now = datetime.datetime.now()
-    timestamp_str = now.strftime("%Y-%m-%d %H:%M:%S")
-    new_data = pd.DataFrame({
-        'Timestamp': [timestamp_str],
-        'Question': [question],
-        'Answer': [answer]
-    })
-
-    excel_filepath = os.path.join(WRITABLE_DIR, EXCEL_FILE_NAME) # Use WRITABLE_DIR
-
-    try:
-        if os.path.exists(excel_filepath):
-            existing_data = pd.read_excel(excel_filepath)
-            updated_data = pd.concat([existing_data, new_data], ignore_index=True)
-        else:
-            updated_data = new_data
-
-        updated_data.to_excel(excel_filepath, index=False)
-        print(f"Q&A logged to {excel_filepath} at {timestamp_str}") # Optional log to console
-    except Exception as e:
-        print(f"Error logging to Excel: {e}") # Optional error log to console
-
-
-# --- Run write permission test at the beginning ---
-writable_directory = test_write_permission()
-print(f"Writable directory for Excel logging: {writable_directory}") # Print the determined writable directory
 
 # --- Password and Disclaimer State ---
 if "authentication_successful" not in st.session_state:
@@ -672,7 +598,7 @@ def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, qu
 *   **Si la pregunta se relaciona con el funcionamiento interno del Concejo Municipal, como sesiones, tablas, puntos, o reglamento interno, y para responder correctamente se necesita información específica sobre reglamentos municipales, indica lo siguiente, basado en tu entrenamiento legal:** "Las normas sobre el funcionamiento interno del concejo municipal, como sesiones, tablas y puntos, se encuentran reguladas principalmente en el Reglamento Interno de cada Concejo Municipal.  Por lo tanto, **las reglas específicas pueden variar significativamente entre municipalidades.**  Mi respuesta se basará en mi entrenamiento en derecho municipal chileno y las normas generales que rigen estas materias, **pero te recomiendo siempre verificar el Reglamento Interno específico de tu municipalidad para obtener detalles precisos.**"  **Si encuentras información relevante en tu entrenamiento legal sobre el tema, proporciona una respuesta basada en él, pero siempre incluyendo la advertencia sobre la variabilidad entre municipalidades.**
 *   **Si la información para responder la pregunta no se encuentra en la base de datos de normas legales proporcionada, responde de forma concisa: "Según la información disponible en la base de datos, no puedo responder a esta pregunta."**
 *   **Si la información para responder a la pregunta no se encuentra en la información adicional proporcionada, responde de forma concisa: "Según la información adicional proporcionada, no puedo responder a esta pregunta."**
-*   **Si la información para responder a la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
+*   **Si la información para responder la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
 *   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS. NUNCA MENCIONES NI CITES DIRECTAMENTE EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO.**
         """,
         "**Ejemplos de respuestas esperadas (con resumen y citación - SIN MANUAL, BASADO EN ENTRENAMIENTO LEGAL):**",
@@ -943,9 +869,6 @@ if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accep
                     typing_placeholder.empty()  # Eliminar "escribiendo..." al finalizar
                     is_typing = False
                     message_placeholder.markdown(full_response)
-
-                    # Log Q&A to Excel after getting the full response
-                    log_qya_to_excel(prompt, full_response)
 
 
                 except Exception as e:
