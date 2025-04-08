@@ -13,10 +13,51 @@ import datetime  # Import datetime for timestamps
 
 # --- Constants ---
 EXCEL_FILE_NAME = "QYA.xlsx"
+WRITABLE_DIR = None  # Variable para almacenar el directorio writable
+
+# --- Function to test write permissions and find a writable directory ---
+def test_write_permission():
+    """Tests write permission in current directory and /tmp, returns writable dir or None."""
+    global WRITABLE_DIR # Use the global variable
+
+    # Test current directory
+    try:
+        test_filepath_current_dir = "streamlit_write_test.txt"
+        with open(test_filepath_current_dir, "w") as f:
+            f.write("This is a write permission test in current directory.")
+        os.remove(test_filepath_current_dir) # Clean up test file
+        print("Write permission test: Current directory - SUCCESS")
+        WRITABLE_DIR = "." # Current directory is writable
+        return "." # Return current directory path
+    except Exception as e:
+        print(f"Write permission test: Current directory - FAIL: {e}")
+
+    # Test /tmp directory
+    try:
+        test_filepath_tmp = "/tmp/streamlit_write_test.txt"
+        with open(test_filepath_tmp, "w") as f:
+            f.write("This is a write permission test in /tmp directory.")
+        os.remove(test_filepath_tmp) # Clean up test file
+        print("Write permission test: /tmp directory - SUCCESS")
+        WRITABLE_DIR = "/tmp" # /tmp is writable
+        return "/tmp" # Return /tmp path
+    except Exception as e:
+        print(f"Write permission test: /tmp directory - FAIL: {e}")
+
+    print("No writable directory found for Excel logging.")
+    WRITABLE_DIR = None # No writable directory found
+    return None # Return None if no writable directory found
+
 
 # --- Function to log Q&A to Excel ---
 def log_qya_to_excel(question: str, answer: str):
-    """Logs the question and answer to an Excel file with timestamp."""
+    """Logs the question and answer to an Excel file with timestamp, using WRITABLE_DIR."""
+    global WRITABLE_DIR # Use the global variable
+
+    if WRITABLE_DIR is None:
+        print("Excel logging is disabled due to no writable directory.") # Inform user if logging is disabled
+        return
+
     now = datetime.datetime.now()
     timestamp_str = now.strftime("%Y-%m-%d %H:%M:%S")
     new_data = pd.DataFrame({
@@ -25,18 +66,24 @@ def log_qya_to_excel(question: str, answer: str):
         'Answer': [answer]
     })
 
+    excel_filepath = os.path.join(WRITABLE_DIR, EXCEL_FILE_NAME) # Use WRITABLE_DIR
+
     try:
-        if os.path.exists(EXCEL_FILE_NAME):
-            existing_data = pd.read_excel(EXCEL_FILE_NAME)
+        if os.path.exists(excel_filepath):
+            existing_data = pd.read_excel(excel_filepath)
             updated_data = pd.concat([existing_data, new_data], ignore_index=True)
         else:
             updated_data = new_data
 
-        updated_data.to_excel(EXCEL_FILE_NAME, index=False)
-        print(f"Q&A logged to {EXCEL_FILE_NAME} at {timestamp_str}") # Optional log to console
+        updated_data.to_excel(excel_filepath, index=False)
+        print(f"Q&A logged to {excel_filepath} at {timestamp_str}") # Optional log to console
     except Exception as e:
         print(f"Error logging to Excel: {e}") # Optional error log to console
 
+
+# --- Run write permission test at the beginning ---
+writable_directory = test_write_permission()
+print(f"Writable directory for Excel logging: {writable_directory}") # Print the determined writable directory
 
 # --- Password and Disclaimer State ---
 if "authentication_successful" not in st.session_state:
