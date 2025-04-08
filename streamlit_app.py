@@ -8,35 +8,15 @@ from pathlib import Path
 from typing import List, Dict
 import hashlib
 import random # Import random module
-import pandas as pd # Import pandas for Excel logging
-from datetime import datetime # Import datetime for timestamps
 
-# --- Configuration ---
-LOG_FILE_PATH = "conversation_logs.xlsx" # Define path for the log file
-
-# --- Logging Function ---
-def log_conversation(query, response):
-    """Logs the user query and AI response to an Excel file with timestamp."""
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_entry = {"Timestamp": timestamp, "User Query": query, "AI Response": response}
-    log_df = None
-
-    if os.path.exists(LOG_FILE_PATH):
-        try:
-            log_df = pd.read_excel(LOG_FILE_PATH)
-        except Exception as e:
-            print(f"Error reading log file: {e}")
-            log_df = pd.DataFrame(columns=["Timestamp", "User Query", "AI Response"]) # Create empty DataFrame if error
-    else:
-        log_df = pd.DataFrame(columns=["Timestamp", "User Query", "AI Response"]) # Create DataFrame if file doesn't exist
-
-    log_df = pd.concat([log_df, pd.DataFrame([log_entry])], ignore_index=True) # Append new log entry
-    try:
-        log_df.to_excel(LOG_FILE_PATH, index=False)
-        print(f"Conversation logged to {LOG_FILE_PATH}") # Optional: Print success message to console
-    except Exception as e:
-        print(f"Error writing to log file: {e}")
-
+# --- Hide Streamlit Menu ---
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # --- Password and Disclaimer State ---
 if "authentication_successful" not in st.session_state:
@@ -422,6 +402,11 @@ st.markdown(
             opacity: 0.4;
             transform: translateY(0);
         }
+    }
+
+    /* --- Hide Github link --- */
+    [data-testid="stAppViewNav"] > div:nth-child(3) > a {
+        display: none !important;
     }
 
     </style>
@@ -892,7 +877,6 @@ if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accep
                     is_typing = False
                     message_placeholder.markdown(full_response)
 
-                    log_conversation(prompt, full_response) # Log the conversation here
 
                 except Exception as e:
                     typing_placeholder.empty()
