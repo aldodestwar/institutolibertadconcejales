@@ -8,6 +8,35 @@ from pathlib import Path
 from typing import List, Dict
 import hashlib
 import random # Import random module
+import pandas as pd # Import pandas for Excel logging
+from datetime import datetime # Import datetime for timestamps
+
+# --- Configuration ---
+LOG_FILE_PATH = "conversation_logs.xlsx" # Define path for the log file
+
+# --- Logging Function ---
+def log_conversation(query, response):
+    """Logs the user query and AI response to an Excel file with timestamp."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = {"Timestamp": timestamp, "User Query": query, "AI Response": response}
+    log_df = None
+
+    if os.path.exists(LOG_FILE_PATH):
+        try:
+            log_df = pd.read_excel(LOG_FILE_PATH)
+        except Exception as e:
+            print(f"Error reading log file: {e}")
+            log_df = pd.DataFrame(columns=["Timestamp", "User Query", "AI Response"]) # Create empty DataFrame if error
+    else:
+        log_df = pd.DataFrame(columns=["Timestamp", "User Query", "AI Response"]) # Create DataFrame if file doesn't exist
+
+    log_df = pd.concat([log_df, pd.DataFrame([log_entry])], ignore_index=True) # Append new log entry
+    try:
+        log_df.to_excel(LOG_FILE_PATH, index=False)
+        print(f"Conversation logged to {LOG_FILE_PATH}") # Optional: Print success message to console
+    except Exception as e:
+        print(f"Error writing to log file: {e}")
+
 
 # --- Password and Disclaimer State ---
 if "authentication_successful" not in st.session_state:
@@ -591,7 +620,7 @@ def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, qu
 *   **Si la pregunta se relaciona con el funcionamiento interno del Concejo Municipal, como sesiones, tablas, puntos, o reglamento interno, y para responder correctamente se necesita información específica sobre reglamentos municipales, indica lo siguiente, basado en tu entrenamiento legal:** "Las normas sobre el funcionamiento interno del concejo municipal, como sesiones, tablas y puntos, se encuentran reguladas principalmente en el Reglamento Interno de cada Concejo Municipal.  Por lo tanto, **las reglas específicas pueden variar significativamente entre municipalidades.**  Mi respuesta se basará en mi entrenamiento en derecho municipal chileno y las normas generales que rigen estas materias, **pero te recomiendo siempre verificar el Reglamento Interno específico de tu municipalidad para obtener detalles precisos.**"  **Si encuentras información relevante en tu entrenamiento legal sobre el tema, proporciona una respuesta basada en él, pero siempre incluyendo la advertencia sobre la variabilidad entre municipalidades.**
 *   **Si la información para responder la pregunta no se encuentra en la base de datos de normas legales proporcionada, responde de forma concisa: "Según la información disponible en la base de datos, no puedo responder a esta pregunta."**
 *   **Si la información para responder a la pregunta no se encuentra en la información adicional proporcionada, responde de forma concisa: "Según la información adicional proporcionada, no puedo responder a esta pregunta."**
-*   **Si la información para responder la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
+*   **Si la información para responder a la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
 *   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS. NUNCA MENCIONES NI CITES DIRECTAMENTE EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO.**
         """,
         "**Ejemplos de respuestas esperadas (con resumen y citación - SIN MANUAL, BASADO EN ENTRENAMIENTO LEGAL):**",
@@ -863,6 +892,7 @@ if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accep
                     is_typing = False
                     message_placeholder.markdown(full_response)
 
+                    log_conversation(prompt, full_response) # Log the conversation here
 
                 except Exception as e:
                     typing_placeholder.empty()
