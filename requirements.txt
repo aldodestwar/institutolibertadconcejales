@@ -3,3 +3,4 @@ google-generativeai
 nltk
 requests
 pandas
+python-docx
