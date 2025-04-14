@@ -7,29 +7,39 @@ from io import BytesIO
 from pathlib import Path
 from typing import List, Dict
 import hashlib
-import random
-from datetime import datetime
+import random # Import random module
 
-# --- Excel Integration ---
-import pandas as pd
-import openpyxl  # Ensure openpyxl is installed: pip install openpyxl
+
 
 # --- Password and Disclaimer State ---
 if "authentication_successful" not in st.session_state:
-    st.session_state.authentication_successful = True
+    st.session_state.authentication_successful = True # Set to True to bypass password
 if "disclaimer_accepted" not in st.session_state:
     st.session_state.disclaimer_accepted = False
 if "password_input" not in st.session_state:
-    st.session_state.password_input = ""
+    st.session_state.password_input = "" # Initialize password input
 if "custom_api_key" not in st.session_state:
-    st.session_state.custom_api_key = ""
+    st.session_state.custom_api_key = "" # Initialize custom API key state
 
 # --- Initial Screen (Password and Disclaimer - Single Step) ---
 if not st.session_state.disclaimer_accepted:
     initial_screen_placeholder = st.empty()
     with initial_screen_placeholder.container():
         st.title("Acceso a Municip.IA")
-        st.markdown("---")
+        # Removed password input
+        # password = st.text_input("Ingrese la clave de usuario", type="password", value=st.session_state.password_input) # Persist input
+
+        # Removed button for verification and password check
+        # if st.button("Verificar Clave"): # Button for verification
+        #     if password.lower() == "ilconcejales":
+        #         st.session_state.authentication_successful = True
+        #     else:
+        #         st.session_state.authentication_successful = False
+        #         st.error("Clave incorrecta. Intente nuevamente.")
+
+        # Show disclaimer always now, authentication is bypassed
+        # if st.session_state.authentication_successful: # Show disclaimer only after correct password
+        st.markdown("---") # Separator
         with st.expander("Descargo de Responsabilidad (Leer antes de usar la IA)", expanded=False):
             st.markdown("""
             **Descargo de Responsabilidad Completo:**
@@ -51,16 +61,19 @@ if not st.session_state.disclaimer_accepted:
         disclaimer_accepted = st.checkbox("Acepto los términos y condiciones y comprendo las limitaciones de esta herramienta.", key="disclaimer_checkbox")
         if disclaimer_accepted:
             st.session_state.disclaimer_accepted = True
-            initial_screen_placeholder.empty()
-            st.rerun()
-    st.stop()
+            initial_screen_placeholder.empty() # Clear initial screen
+            st.rerun() # Re-run to show main app
+
+        # Removed password persistence
+        # st.session_state.password_input = password # Update password input for persistence
+    st.stop() # Stop execution here if disclaimer not accepted
 
 # --- Configuración de la página ---
 st.set_page_config(
     page_title="Municip.IA - Instituto Libertad",
     page_icon="⚖️",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed" # Changed to "collapsed"
 )
 
 # --- Estilos CSS personalizados ---
@@ -585,7 +598,7 @@ def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, qu
 *   **Si la pregunta se relaciona con el funcionamiento interno del Concejo Municipal, como sesiones, tablas, puntos, o reglamento interno, y para responder correctamente se necesita información específica sobre reglamentos municipales, indica lo siguiente, basado en tu entrenamiento legal:** "Las normas sobre el funcionamiento interno del concejo municipal, como sesiones, tablas y puntos, se encuentran reguladas principalmente en el Reglamento Interno de cada Concejo Municipal.  Por lo tanto, **las reglas específicas pueden variar significativamente entre municipalidades.**  Mi respuesta se basará en mi entrenamiento en derecho municipal chileno y las normas generales que rigen estas materias, **pero te recomiendo siempre verificar el Reglamento Interno específico de tu municipalidad para obtener detalles precisos.**"  **Si encuentras información relevante en tu entrenamiento legal sobre el tema, proporciona una respuesta basada en él, pero siempre incluyendo la advertencia sobre la variabilidad entre municipalidades.**
 *   **Si la información para responder la pregunta no se encuentra en la base de datos de normas legales proporcionada, responde de forma concisa: "Según la información disponible en la base de datos, no puedo responder a esta pregunta."**
 *   **Si la información para responder a la pregunta no se encuentra en la información adicional proporcionada, responde de forma concisa: "Según la información adicional proporcionada, no puedo responder a esta pregunta."**
-*   **Si la información para responder a la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
+*   **Si la información para responder la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
 *   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS. NUNCA MENCIONES NI CITES DIRECTAMENTE EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO.**
         """,
         "**Ejemplos de respuestas esperadas (con resumen y citación - SIN MANUAL, BASADO EN ENTRENAMIENTO LEGAL):**",
@@ -664,49 +677,6 @@ def unpin_conversation(name):
     if name in st.session_state.saved_conversations:
         st.session_state.saved_conversations[name]["pinned"] = False
 
-# --- Excel Integration Function ---
-def save_to_excel(conversation_messages: List[Dict]):
-    """Saves the conversation messages to an Excel file named 'qya.xlsx'."""
-    excel_filename = "qya.xlsx"
-    new_data = []
-
-    for message in conversation_messages:
-        if message["role"] != "assistant" and message["role"] != "user":
-            continue # Skip initial assistant message
-        role = "Usuario" if message["role"] == "user" else "Municip.IA"
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        if message["role"] == "user":
-            new_data.append({
-                "Fecha y Hora Consulta": timestamp,
-                "Pregunta Usuario": message["content"],
-                "Fecha y Hora Respuesta": "", # Respuesta time will be filled later if needed
-                "Respuesta Municip.IA": ""
-            })
-        elif message["role"] == "assistant":
-             if new_data: # Ensure there is a user question before adding assistant response
-                new_data[-1]["Fecha y Hora Respuesta"] = timestamp # Fill in response timestamp
-                new_data[-1]["Respuesta Municip.IA"] = message["content"] # Fill in assistant response
-
-
-    df_new = pd.DataFrame(new_data)
-
-    if os.path.exists(excel_filename):
-        try:
-            df_existing = pd.read_excel(excel_filename)
-            df_combined = pd.concat([df_existing, df_new], ignore_index=True)
-        except Exception as e: # Catch potential errors reading existing file
-            st.error(f"Error al leer el archivo Excel existente: {e}. Se creará un nuevo archivo.")
-            df_combined = df_new # Fallback to just new data if reading fails
-    else:
-        df_combined = df_new
-
-    try:
-        df_combined.to_excel(excel_filename, index=False)
-        st.success("Conversación guardada en qya.xlsx!", icon="✅")
-    except Exception as e:
-        st.error(f"Error al guardar en archivo Excel: {e}", icon="🚨")
-
-
 # --- Barra lateral ---
 with st.sidebar:
     st.markdown('<div class="sidebar-logo-container"></div>', unsafe_allow_html=True)
@@ -754,9 +724,9 @@ with st.sidebar:
     if new_conversation_name != st.session_state.current_conversation_name:
         st.session_state.current_conversation_name = new_conversation_name
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("Guardar Chat"):
+        if st.button("Guardar"):
             if len(st.session_state.saved_conversations) >= 5:
                 unpinned_conversations = [name for name, data in st.session_state.saved_conversations.items() if not data['pinned']]
                 if unpinned_conversations:
@@ -779,10 +749,6 @@ with st.sidebar:
                 else:
                     pin_conversation(st.session_state.current_conversation_name)
                 st.rerun()
-    with col4:
-        if st.button("Guardar en Excel"): # Changed button label
-            save_to_excel(st.session_state.messages) # Call save_to_excel function
-
 
     st.subheader("Conversaciones Guardadas")
     for name, data in sorted(st.session_state.saved_conversations.items(), key=lambda item: item[1]['pinned'], reverse=True):
