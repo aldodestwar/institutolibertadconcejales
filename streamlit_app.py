@@ -21,6 +21,33 @@ if "password_input" not in st.session_state:
 if "custom_api_key" not in st.session_state:
     st.session_state.custom_api_key = "" # Initialize custom API key state
 
+# --- NEW: Session state for the assigned API key name for this specific session ---
+if "session_api_key_name" not in st.session_state:
+    st.session_state.session_api_key_name = None # e.g., will store "GOOGLE_API_KEY_3"
+
+
+# --- Function to get available API keys (no changes needed here) ---
+def get_available_api_keys() -> List[str]:
+    """Checks for configured API keys in st.secrets and returns a list of available key names."""
+    available_keys = []
+    # print("--- DEBUGGING st.secrets ---") # Optional debug prints
+    # print("Contents of st.secrets:", st.secrets)
+    for i in range(1, 15): # Check for up to 15 API keys
+        key_name = f"GOOGLE_API_KEY_{i}"
+        # Use hasattr for safer checking in case secrets structure changes
+        # And check if the key actually has a value
+        try:
+            # Combine check and access for efficiency
+            secret_value = getattr(st.secrets, key_name, None) or st.secrets.get(key_name, None)
+            if secret_value: # Ensure it's not empty or None
+                 available_keys.append(key_name)
+        except Exception: # Catch potential errors during access
+             pass # Ignore if key doesn't exist or causes error
+    # print("Available keys found by function:", available_keys)
+    # print("--- DEBUGGING st.secrets END ---")
+    return available_keys
+
+
 # --- Initial Screen (Password and Disclaimer - Single Step) ---
 if not st.session_state.disclaimer_accepted:
     initial_screen_placeholder = st.empty()
@@ -61,6 +88,24 @@ if not st.session_state.disclaimer_accepted:
         disclaimer_accepted = st.checkbox("Acepto los términos y condiciones y comprendo las limitaciones de esta herramienta.", key="disclaimer_checkbox")
         if disclaimer_accepted:
             st.session_state.disclaimer_accepted = True
+
+            # --- !!! API KEY ASSIGNMENT LOGIC !!! ---
+            # Assign a key to the session ONLY if one hasn't been assigned yet for this session
+            if st.session_state.session_api_key_name is None:
+                available_keys = get_available_api_keys()     # <--- Obtiene la lista de disponibles
+                if available_keys:
+                    # ---!!! AQUÍ OCURRE LA SELECCIÓN ALEATORIA !!!---
+                    st.session_state.session_api_key_name = random.choice(available_keys)
+                    # --------------------------------------------------
+                    print(f"--- SESSION KEY ASSIGNED (Randomly Chosen): {st.session_state.session_api_key_name} ---") # Debug print
+                else:
+                    # Handle case where no keys are available in secrets
+                    st.session_state.session_api_key_name = None # Keep it None if assignment fails
+                    print("--- WARNING: No available API keys in st.secrets to assign to session. ---")
+                    # Error will be handled later if no key can be used
+            # --- !!! END OF ASSIGNMENT LOGIC !!! ---
+
+
             initial_screen_placeholder.empty() # Clear initial screen
             st.rerun() # Re-run to show main app
 
@@ -407,6 +452,67 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+# --- API Key Selection and Configuration (REVISED LOGIC) ---
+GOOGLE_API_KEY = None
+active_key_source = "Ninguna" # To display in sidebar
+model = None # Initialize model to None
+
+# 1. Prioritize Custom API Key
+if st.session_state.custom_api_key:
+    GOOGLE_API_KEY = st.session_state.custom_api_key
+    # Mask the key for display
+    masked_key = f"{GOOGLE_API_KEY[:4]}...{GOOGLE_API_KEY[-4:]}" if len(GOOGLE_API_KEY) > 8 else GOOGLE_API_KEY
+    active_key_source = f"Personalizada ({masked_key})"
+    print(f"--- USING CUSTOM API KEY ---")
+
+# 2. Use Session-Assigned Key if no Custom Key and session key exists
+elif st.session_state.session_api_key_name:
+    try:
+        # Retrieve the actual key value using the name stored in session_state
+        GOOGLE_API_KEY = st.secrets[st.session_state.session_api_key_name]
+        active_key_source = f"Sesión ({st.session_state.session_api_key_name})" # Show assigned key name
+        print(f"--- USING SESSION ASSIGNED KEY: {st.session_state.session_api_key_name} ---")
+    except KeyError:
+        st.error(f"Error: La clave API asignada a la sesión ('{st.session_state.session_api_key_name}') ya no se encuentra en st.secrets. Por favor, recargue la página o contacte al administrador.", icon="🚨")
+        active_key_source = "Error - Clave de sesión no encontrada"
+        # Don't stop here yet, let the final check handle it
+        GOOGLE_API_KEY = None
+    except Exception as e:
+        st.error(f"Error inesperado al obtener la clave API de sesión: {e}", icon="🚨")
+        active_key_source = "Error - Lectura clave sesión"
+        GOOGLE_API_KEY = None
+
+# 3. Handle case where no key is determined AFTER disclaimer accepted
+else:
+    # This case means disclaimer is accepted, but assignment failed AND no custom key provided.
+    active_key_source = "Error - Sin clave asignada"
+    GOOGLE_API_KEY = None
+    # Error message will be shown in the final check below
+
+# Final check and Configure genai only if a key was successfully determined
+if GOOGLE_API_KEY:
+    try:
+        genai.configure(api_key=GOOGLE_API_KEY)
+        # Use your specific model name here - MAKE SURE IT MATCHES YOUR KEYS
+        model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21') # <--- CONFIRM THIS MODEL NAME
+        print(f"--- GenAI Configured with key source: {active_key_source} ---")
+    except Exception as e:
+        st.error(f"Error al configurar Google GenAI con la clave ({active_key_source}): {e}. Verifique la validez de la clave y el nombre del modelo.", icon="🚨")
+        active_key_source = f"Error - Configuración fallida ({active_key_source})"
+        model = None # Ensure model is None if config fails
+        # Stop execution if configuration fails
+        st.stop()
+else:
+    # If still no API key after disclaimer logic, show error and stop.
+    available_keys_check = get_available_api_keys()
+    if not available_keys_check and not st.session_state.custom_api_key:
+         st.error("Error crítico: No hay claves API configuradas en st.secrets y no se ha ingresado una clave personalizada. La aplicación no puede funcionar.", icon="🚨")
+    else:
+         st.error("Error crítico: No se ha podido determinar una clave API válida para esta sesión. Verifique la configuración o intente recargar.", icon="🚨")
+    st.stop()
+
+
 # --- Disclaimer Status Display in Main Chat Area ---
 if st.session_state.disclaimer_accepted:
     disclaimer_status_main_expander = st.expander("Disclaimer Aceptado - Clic para revisar o revocar", expanded=False)
@@ -441,37 +547,6 @@ with col_title:
     st.markdown('<h1 class="main-title">Municip.IA</h1>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">Instituto Libertad</p>', unsafe_allow_html=True)
 
-# --- API Key Selection Logic ---
-def get_available_api_keys() -> List[str]:
-    """Checks for configured API keys in st.secrets and returns a list of available key names."""
-    available_keys = []
-    print("--- DEBUGGING st.secrets ---")  # Separator for logs
-    print("Contents of st.secrets:", st.secrets)  # Print the entire st.secrets dictionary
-    for i in range(1, 15): # Check for up to 15 API keys
-        key_name = f"GOOGLE_API_KEY_{i}"
-        if key_name in st.secrets:
-            available_keys.append(key_name)
-    print("Available keys found by function:", available_keys) # Print keys found by the function
-    print("--- DEBUGGING st.secrets END ---") # End separator
-    return available_keys
-
-available_keys = get_available_api_keys()
-selected_key_name = None # Initialize selected_key_name outside if block
-GOOGLE_API_KEY = None # Initialize GOOGLE_API_KEY outside if block
-
-if not available_keys and not st.session_state.custom_api_key: # Check for custom key too
-    st.error("No API keys configured in st.secrets y no se ha ingresado una clave personalizada. Por favor configure al menos una API key (GOOGLE_API_KEY_1, GOOGLE_API_KEY_2, etc.) o ingrese una clave personalizada en la barra lateral. La aplicación no puede ejecutarse.", icon="🚨")
-    st.stop() # Stop execution if no API keys are found
-
-if st.session_state.custom_api_key: # Use custom API key if provided
-    GOOGLE_API_KEY = st.session_state.custom_api_key
-    selected_key_name = "Clave Personalizada" # Indicate custom key is used
-else: # Fallback to random selection from st.secrets
-    selected_key_name = random.choice(available_keys) # Randomly select an API key name
-    GOOGLE_API_KEY = st.secrets[selected_key_name] # Access the selected API key
-
-genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
 
 # --- Funciones para cargar y procesar archivos ---
 
@@ -598,7 +673,7 @@ def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, qu
 *   **Si la pregunta se relaciona con el funcionamiento interno del Concejo Municipal, como sesiones, tablas, puntos, o reglamento interno, y para responder correctamente se necesita información específica sobre reglamentos municipales, indica lo siguiente, basado en tu entrenamiento legal:** "Las normas sobre el funcionamiento interno del concejo municipal, como sesiones, tablas y puntos, se encuentran reguladas principalmente en el Reglamento Interno de cada Concejo Municipal.  Por lo tanto, **las reglas específicas pueden variar significativamente entre municipalidades.**  Mi respuesta se basará en mi entrenamiento en derecho municipal chileno y las normas generales que rigen estas materias, **pero te recomiendo siempre verificar el Reglamento Interno específico de tu municipalidad para obtener detalles precisos.**"  **Si encuentras información relevante en tu entrenamiento legal sobre el tema, proporciona una respuesta basada en él, pero siempre incluyendo la advertencia sobre la variabilidad entre municipalidades.**
 *   **Si la información para responder la pregunta no se encuentra en la base de datos de normas legales proporcionada, responde de forma concisa: "Según la información disponible en la base de datos, no puedo responder a esta pregunta."**
 *   **Si la información para responder a la pregunta no se encuentra en la información adicional proporcionada, responde de forma concisa: "Según la información adicional proporcionada, no puedo responder a esta pregunta."**
-*   **Si la información para responder la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
+*   **Si la información para responder a la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
 *   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS. NUNCA MENCIONES NI CITES DIRECTAMENTE EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO.**
         """,
         "**Ejemplos de respuestas esperadas (con resumen y citación - SIN MANUAL, BASADO EN ENTRENAMIENTO LEGAL):**",
@@ -693,11 +768,40 @@ with st.sidebar:
             st.warning("Disclaimer No Aceptado", icon="⚠️")
             st.markdown("Para usar Municip.IA, debes aceptar el Disclaimer.")
 
-    st.subheader("Estado API Key") # API Key Status Section
-    if selected_key_name:
-        st.success(f"Usando API Key: {selected_key_name}", icon="🔑") # Display selected API key
+    # --- API Key Status (Uses active_key_source determined earlier) ---
+    st.subheader("Estado API Key Activa")
+    if st.session_state.disclaimer_accepted:
+        if active_key_source.startswith("Error"):
+            st.error(f"Estado: {active_key_source}", icon="🚨")
+        elif active_key_source == "Ninguna": # Should be handled by earlier stop(), but safeguard
+             st.warning("Determinando clave API...", icon="⏳")
+        else:
+            st.success(f"Usando: {active_key_source}", icon="🔑")
+
+            # Button to force re-assign a new random key for the session
+            if not st.session_state.custom_api_key and st.session_state.session_api_key_name:
+                if st.button("🔄 Asignar Nueva Clave a Sesión"):
+                    available_keys = get_available_api_keys()
+                    current_key = st.session_state.session_api_key_name
+                    other_keys = [k for k in available_keys if k != current_key]
+
+                    if other_keys:
+                         new_key = random.choice(other_keys)
+                    elif available_keys: # If only one key exists, or only the current one
+                         new_key = random.choice(available_keys) # Reassign potentially the same one if only one exists
+                    else:
+                         new_key = None
+
+                    if new_key:
+                         st.session_state.session_api_key_name = new_key
+                         st.success(f"Nueva clave asignada ({new_key}). Recargando...", icon="✅")
+                         time.sleep(1.5)
+                         st.rerun()
+                    else:
+                         st.error("No hay claves API disponibles para reasignar.")
     else:
-        st.warning("No se está usando API Key (Error)", icon="⚠️")
+        st.info("Esperando aceptación del Disclaimer...")
+
 
     st.subheader("API Key Personalizada (Opcional)") # Custom API Key Input
     custom_api_key_input = st.text_input("Ingresa tu API Key personalizada:", type="password", value=st.session_state.custom_api_key, help="Si deseas usar una API Key diferente a las configuradas en st.secrets, puedes ingresarla aquí. Esto tiene prioridad sobre las API Keys de st.secrets.")
