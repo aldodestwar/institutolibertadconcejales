@@ -4,3 +4,4 @@ nltk
 requests
 pandas
 python-docx
+notion-client
