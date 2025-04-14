@@ -636,7 +636,7 @@ def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, qu
 
     if database_files_content: # Modificado para usar database_files_content directamente
         for filename, content in database_files_content.items(): # Iterar sobre TODOS los archivos
-            if filename == "MANUAL DE CONCEJALES Y CONCEJALAS - 2025 ACHM.txt":
+            if filename == "MANUAL DE CONCEJALES Y CONCEJALAS.txt":
                 continue # Exclude manual from this section, it's already handled above
             description = get_file_description(filename)
             # Modified line to remove .txt from filename in prompt
