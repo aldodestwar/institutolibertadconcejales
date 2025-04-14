@@ -68,7 +68,7 @@ if not st.session_state.disclaimer_accepted:
     with initial_screen_placeholder.container():
         st.title("Acceso a Municip.IA")
         st.markdown("---") # Separator
-        with st.expander("Descargo de Responsabilidad (Leer antes de usar la IA)", expanded=True): # Expanded
+        with st.expander("Descargo de Responsabilidad (Leer antes de usar la IA)", expanded=False): # Expanded
             st.markdown("""
             **Descargo de Responsabilidad Completo:**
 
