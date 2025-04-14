@@ -9,8 +9,7 @@ from typing import List, Dict
 import hashlib
 import random # Import random module
 
-# --- Notion Integration ---
-from notion_client import Client  # Import Notion client library
+
 
 # --- Password and Disclaimer State ---
 if "authentication_successful" not in st.session_state:
@@ -599,7 +598,7 @@ def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, qu
 *   **Si la pregunta se relaciona con el funcionamiento interno del Concejo Municipal, como sesiones, tablas, puntos, o reglamento interno, y para responder correctamente se necesita información específica sobre reglamentos municipales, indica lo siguiente, basado en tu entrenamiento legal:** "Las normas sobre el funcionamiento interno del concejo municipal, como sesiones, tablas y puntos, se encuentran reguladas principalmente en el Reglamento Interno de cada Concejo Municipal.  Por lo tanto, **las reglas específicas pueden variar significativamente entre municipalidades.**  Mi respuesta se basará en mi entrenamiento en derecho municipal chileno y las normas generales que rigen estas materias, **pero te recomiendo siempre verificar el Reglamento Interno específico de tu municipalidad para obtener detalles precisos.**"  **Si encuentras información relevante en tu entrenamiento legal sobre el tema, proporciona una respuesta basada en él, pero siempre incluyendo la advertencia sobre la variabilidad entre municipalidades.**
 *   **Si la información para responder la pregunta no se encuentra en la base de datos de normas legales proporcionada, responde de forma concisa: "Según la información disponible en la base de datos, no puedo responder a esta pregunta."**
 *   **Si la información para responder a la pregunta no se encuentra en la información adicional proporcionada, responde de forma concisa: "Según la información adicional proporcionada, no puedo responder a esta pregunta."**
-*   **Si la información para responder a la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
+*   **Si la información para responder la pregunta no se encuentra en tu conocimiento general de derecho municipal chileno, responde de forma concisa: "Según mi conocimiento general de derecho municipal chileno, no puedo responder a esta pregunta."**
 *   **IMPORTANTE: SIEMPRE CITA LA FUENTE NORMATIVA EN TUS RESPUESTAS. NUNCA MENCIONES NI CITES DIRECTAMENTE EL MANUAL DE DERECHO MUNICIPAL PROPORCIONADO.**
         """,
         "**Ejemplos de respuestas esperadas (con resumen y citación - SIN MANUAL, BASADO EN ENTRENAMIENTO LEGAL):**",
@@ -678,55 +677,6 @@ def unpin_conversation(name):
     if name in st.session_state.saved_conversations:
         st.session_state.saved_conversations[name]["pinned"] = False
 
-# --- Notion Integration Function ---
-def save_to_notion(conversation_messages: List[Dict], database_id: str):
-    """Saves the conversation messages to a Notion database."""
-    notion_api_key = st.secrets.get("NOTION_API_KEY") # Get API Key from secrets
-
-    if not notion_api_key:
-        st.error("No se ha configurado la API Key de Notion en secrets.toml. Por favor, agrega NOTION_API_KEY a secrets.toml para guardar en Notion.", icon="🚨")
-        return False
-    if not database_id:
-        st.error("Por favor, ingresa tu Database ID de Notion en la barra lateral para guardar la conversación en Notion.", icon="🚨")
-        return False
-
-    try:
-        notion_client = Client(auth=notion_api_key)
-
-        page_properties = {
-            "Name": {"title": [{"text": {"content": st.session_state.current_conversation_name}}]}
-        }
-        page_children = []
-        for message in conversation_messages:
-            role = "Usuario" if message["role"] == "user" else "Municip.IA"
-            page_children.append(
-                {
-                    "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [
-                            {
-                                "type": "text",
-                                "text": {"content": f"{role}: {message['content']}"},
-                            }
-                        ]
-                    },
-                }
-            )
-
-        notion_client.pages.create(
-            parent={"database_id": database_id},
-            properties=page_properties,
-            children=page_children,
-        )
-        st.success("Conversación guardada exitosamente en Notion!", icon="✅")
-        return True
-
-    except Exception as e:
-        st.error(f"Error al guardar en Notion: {e}. Asegúrate de que tu API Key y Database ID sean correctos y que tu base de datos tenga una columna de 'Name' tipo 'Title'.", icon="🚨")
-        return False
-
-
 # --- Barra lateral ---
 with st.sidebar:
     st.markdown('<div class="sidebar-logo-container"></div>', unsafe_allow_html=True)
@@ -755,12 +705,6 @@ with st.sidebar:
         st.session_state.custom_api_key = custom_api_key_input
         st.rerun() # Rerun to apply the new API key
 
-    st.subheader("API Key Notion")
-    st.markdown("La API Key de Notion se debe configurar en el archivo `secrets.toml` como `NOTION_API_KEY`.")
-
-
-    notion_database_id = st.text_input("Notion Database ID:", help="Opcional: Ingresa el ID de tu base de datos de Notion donde guardar las conversaciones. **IMPORTANTE: Asegúrate de que tu base de datos tenga una columna de 'Name' tipo 'Title'.**")
-
     st.subheader("Cargar Datos Adicionales")
     uploaded_files = st.file_uploader("Adjuntar archivos adicionales (.txt)", type=["txt"], help="Puedes adjuntar archivos .txt adicionales para que sean considerados en la respuesta.", accept_multiple_files=True) # Updated to only accept .txt
     if uploaded_files:
@@ -780,7 +724,7 @@ with st.sidebar:
     if new_conversation_name != st.session_state.current_conversation_name:
         st.session_state.current_conversation_name = new_conversation_name
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("Guardar"):
             if len(st.session_state.saved_conversations) >= 5:
@@ -805,10 +749,6 @@ with st.sidebar:
                 else:
                     pin_conversation(st.session_state.current_conversation_name)
                 st.rerun()
-    with col4:
-        if st.button("Guardar en Notion"):
-            save_to_notion(st.session_state.messages, notion_database_id)
-
 
     st.subheader("Conversaciones Guardadas")
     for name, data in sorted(st.session_state.saved_conversations.items(), key=lambda item: item[1]['pinned'], reverse=True):
