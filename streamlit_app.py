@@ -8,22 +8,7 @@ from pathlib import Path
 from typing import List, Dict
 import hashlib
 import random # Import random module
-import datetime # Import datetime for logging
 
-
-# --- Logging Configuration ---
-LOG_FILE_PATH = "conversation_log.txt" # Define log file path
-
-def log_conversation(user_prompt, assistant_response):
-    """Logs the conversation to a text file."""
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_entry = f"Timestamp: {timestamp}\nUser: {user_prompt}\nAssistant: {assistant_response}\n---\n"
-    try:
-        with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
-            log_file.write(log_entry)
-        print("Conversation logged to:", LOG_FILE_PATH) # Optional confirmation print
-    except Exception as e:
-        print(f"Error writing to log file: {e}") # Optional error print
 
 
 # --- Password and Disclaimer State ---
@@ -1008,8 +993,6 @@ if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accep
                     is_typing = False
                     message_placeholder.markdown(full_response)
 
-                    # --- LOGGING CONVERSATION HERE ---
-                    log_conversation(prompt, full_response) # Log after response is generated
 
                 except Exception as e:
                     typing_placeholder.empty()
