@@ -25,89 +25,27 @@ if "custom_api_key" not in st.session_state:
 if "session_api_key_name" not in st.session_state:
     st.session_state.session_api_key_name = None # e.g., will store "GOOGLE_API_KEY_3"
 
-# --- NEW: Session state for recently used API keys (for rotation) ---
-if "recently_used_api_keys" not in st.session_state:
-    st.session_state.recently_used_api_keys = [] # Stores names of recently used session keys
-MAX_RECENT_KEYS_TO_AVOID = 3
-
 
 # --- Function to get available API keys (no changes needed here) ---
 def get_available_api_keys() -> List[str]:
     """Checks for configured API keys in st.secrets and returns a list of available key names."""
     available_keys = []
+    # print("--- DEBUGGING st.secrets ---") # Optional debug prints
+    # print("Contents of st.secrets:", st.secrets)
     for i in range(1, 15): # Check for up to 15 API keys
         key_name = f"GOOGLE_API_KEY_{i}"
+        # Use hasattr for safer checking in case secrets structure changes
+        # And check if the key actually has a value
         try:
+            # Combine check and access for efficiency
             secret_value = getattr(st.secrets, key_name, None) or st.secrets.get(key_name, None)
-            if secret_value:
+            if secret_value: # Ensure it's not empty or None
                  available_keys.append(key_name)
-        except Exception:
-             pass
+        except Exception: # Catch potential errors during access
+             pass # Ignore if key doesn't exist or causes error
+    # print("Available keys found by function:", available_keys)
+    # print("--- DEBUGGING st.secrets END ---")
     return available_keys
-
-
-# --- NEW: Function to rotate API key ---
-def rotate_api_key():
-    """
-    Selects a new API key for the session, avoiding the current and recently used ones.
-    Returns True if a new key was set and rerun is needed, False otherwise.
-    """
-    if st.session_state.custom_api_key: # Don't rotate if a custom key is in use
-        print("DEBUG: Custom API key in use, skipping rotation.")
-        return False
-
-    available_keys = get_available_api_keys()
-    current_session_key = st.session_state.session_api_key_name
-    recently_used = st.session_state.recently_used_api_keys
-
-    if not available_keys:
-        print("DEBUG: No available API keys to rotate to.")
-        return False
-
-    # Potential candidates are those not currently used and not in the recent list
-    potential_next_keys = [
-        key for key in available_keys
-        if key != current_session_key and key not in recently_used
-    ]
-
-    if not potential_next_keys:
-        # If all available keys are either current or recent,
-        # relax the "recent" constraint but still try to avoid the current one.
-        print("DEBUG: All available keys are recent or current. Relaxing 'recent' constraint for rotation.")
-        potential_next_keys = [key for key in available_keys if key != current_session_key]
-        if not potential_next_keys:
-            # If only one key is available, or all available keys are the current one (unlikely but possible)
-            # then we might have to pick from all available keys, even if it's the current one.
-            print("DEBUG: Only one key available or all are current. Picking from all available for rotation.")
-            potential_next_keys = list(available_keys) # Make a mutable copy
-
-    if not potential_next_keys:
-        print("DEBUG: No keys left to choose after all relaxations. Cannot rotate.")
-        return False # Should be very rare
-
-    new_key_name = random.choice(potential_next_keys)
-
-    if new_key_name != current_session_key:
-        print(f"DEBUG: Rotating API key from {current_session_key} to {new_key_name}")
-        # Add the *old* session key to the recent list before updating
-        if current_session_key: # Make sure it's not None (e.g., first run)
-            st.session_state.recently_used_api_keys.append(current_session_key)
-            # Keep the recent list to the desired size
-            if len(st.session_state.recently_used_api_keys) > MAX_RECENT_KEYS_TO_AVOID:
-                st.session_state.recently_used_api_keys.pop(0)
-
-        st.session_state.session_api_key_name = new_key_name
-        print(f"DEBUG: Recently used keys: {st.session_state.recently_used_api_keys}")
-        return True
-    else:
-        print(f"DEBUG: Selected key {new_key_name} is the same as current or only option. No rotation performed.")
-        # If the chosen key is the same as current (e.g., only one key available),
-        # still ensure it's in the recent list if it's not a custom key.
-        if current_session_key and current_session_key not in st.session_state.recently_used_api_keys:
-            st.session_state.recently_used_api_keys.append(current_session_key)
-            if len(st.session_state.recently_used_api_keys) > MAX_RECENT_KEYS_TO_AVOID:
-                st.session_state.recently_used_api_keys.pop(0)
-        return False
 
 
 # --- Initial Screen (Password and Disclaimer - Single Step) ---
@@ -115,7 +53,20 @@ if not st.session_state.disclaimer_accepted:
     initial_screen_placeholder = st.empty()
     with initial_screen_placeholder.container():
         st.title("Acceso a Municip.IA")
-        st.markdown("---")
+        # Removed password input
+        # password = st.text_input("Ingrese la clave de usuario", type="password", value=st.session_state.password_input) # Persist input
+
+        # Removed button for verification and password check
+        # if st.button("Verificar Clave"): # Button for verification
+        #     if password.lower() == "ilconcejales":
+        #         st.session_state.authentication_successful = True
+        #     else:
+        #         st.session_state.authentication_successful = False
+        #         st.error("Clave incorrecta. Intente nuevamente.")
+
+        # Show disclaimer always now, authentication is bypassed
+        # if st.session_state.authentication_successful: # Show disclaimer only after correct password
+        st.markdown("---") # Separator
         with st.expander("Descargo de Responsabilidad (Leer antes de usar la IA)", expanded=False):
             st.markdown("""
             **Descargo de Responsabilidad Completo:**
@@ -138,33 +89,39 @@ if not st.session_state.disclaimer_accepted:
         if disclaimer_accepted:
             st.session_state.disclaimer_accepted = True
 
-            if st.session_state.session_api_key_name is None: # Assign only if not already assigned
-                available_keys = get_available_api_keys()
+            # --- !!! API KEY ASSIGNMENT LOGIC !!! ---
+            # Assign a key to the session ONLY if one hasn't been assigned yet for this session
+            if st.session_state.session_api_key_name is None:
+                available_keys = get_available_api_keys()     # <--- Obtiene la lista de disponibles
                 if available_keys:
+                    # ---!!! AQUÍ OCURRE LA SELECCIÓN ALEATORIA !!!---
                     st.session_state.session_api_key_name = random.choice(available_keys)
-                    print(f"--- INITIAL SESSION KEY ASSIGNED (Randomly Chosen): {st.session_state.session_api_key_name} ---")
-                    # Add this initial key to recently_used if it's not there
-                    if st.session_state.session_api_key_name not in st.session_state.recently_used_api_keys:
-                        st.session_state.recently_used_api_keys.append(st.session_state.session_api_key_name)
-                        if len(st.session_state.recently_used_api_keys) > MAX_RECENT_KEYS_TO_AVOID:
-                            st.session_state.recently_used_api_keys.pop(0)
+                    # --------------------------------------------------
+                    print(f"--- SESSION KEY ASSIGNED (Randomly Chosen): {st.session_state.session_api_key_name} ---") # Debug print
                 else:
-                    st.session_state.session_api_key_name = None
-                    print("--- WARNING: No available API keys in st.secrets to assign to session initially. ---")
+                    # Handle case where no keys are available in secrets
+                    st.session_state.session_api_key_name = None # Keep it None if assignment fails
+                    print("--- WARNING: No available API keys in st.secrets to assign to session. ---")
+                    # Error will be handled later if no key can be used
+            # --- !!! END OF ASSIGNMENT LOGIC !!! ---
 
-            initial_screen_placeholder.empty()
-            st.rerun()
-    st.stop()
+
+            initial_screen_placeholder.empty() # Clear initial screen
+            st.rerun() # Re-run to show main app
+
+        # Removed password persistence
+        # st.session_state.password_input = password # Update password input for persistence
+    st.stop() # Stop execution here if disclaimer not accepted
 
 # --- Configuración de la página ---
 st.set_page_config(
     page_title="Municip.IA - Instituto Libertad",
     page_icon="⚖️",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed" # Changed to "collapsed"
 )
 
-# --- Estilos CSS personalizados (NO CHANGES HERE) ---
+# --- Estilos CSS personalizados ---
 st.markdown(
     """
     <style>
@@ -498,43 +455,56 @@ st.markdown(
 
 # --- API Key Selection and Configuration (REVISED LOGIC) ---
 GOOGLE_API_KEY = None
-active_key_source = "Ninguna"
-model = None
+active_key_source = "Ninguna" # To display in sidebar
+model = None # Initialize model to None
 
+# 1. Prioritize Custom API Key
 if st.session_state.custom_api_key:
     GOOGLE_API_KEY = st.session_state.custom_api_key
+    # Mask the key for display
     masked_key = f"{GOOGLE_API_KEY[:4]}...{GOOGLE_API_KEY[-4:]}" if len(GOOGLE_API_KEY) > 8 else GOOGLE_API_KEY
     active_key_source = f"Personalizada ({masked_key})"
     print(f"--- USING CUSTOM API KEY ---")
+
+# 2. Use Session-Assigned Key if no Custom Key and session key exists
 elif st.session_state.session_api_key_name:
     try:
+        # Retrieve the actual key value using the name stored in session_state
         GOOGLE_API_KEY = st.secrets[st.session_state.session_api_key_name]
-        active_key_source = f"Sesión ({st.session_state.session_api_key_name})"
+        active_key_source = f"Sesión ({st.session_state.session_api_key_name})" # Show assigned key name
         print(f"--- USING SESSION ASSIGNED KEY: {st.session_state.session_api_key_name} ---")
     except KeyError:
         st.error(f"Error: La clave API asignada a la sesión ('{st.session_state.session_api_key_name}') ya no se encuentra en st.secrets. Por favor, recargue la página o contacte al administrador.", icon="🚨")
         active_key_source = "Error - Clave de sesión no encontrada"
+        # Don't stop here yet, let the final check handle it
         GOOGLE_API_KEY = None
     except Exception as e:
         st.error(f"Error inesperado al obtener la clave API de sesión: {e}", icon="🚨")
         active_key_source = "Error - Lectura clave sesión"
         GOOGLE_API_KEY = None
+
+# 3. Handle case where no key is determined AFTER disclaimer accepted
 else:
+    # This case means disclaimer is accepted, but assignment failed AND no custom key provided.
     active_key_source = "Error - Sin clave asignada"
     GOOGLE_API_KEY = None
+    # Error message will be shown in the final check below
 
+# Final check and Configure genai only if a key was successfully determined
 if GOOGLE_API_KEY:
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
-        # Ensure your model name is correct, e.g., 'gemini-1.5-flash-latest' or 'gemini-pro'
-        model = genai.GenerativeModel('gemini-1.5-flash-latest') # MAKE SURE THIS MODEL NAME IS VALID FOR YOUR KEYS
+        # Use your specific model name here - MAKE SURE IT MATCHES YOUR KEYS
+        model = genai.GenerativeModel('gemini-2.5-flash-preview-04-17') # <--- CONFIRM THIS MODEL NAME
         print(f"--- GenAI Configured with key source: {active_key_source} ---")
     except Exception as e:
         st.error(f"Error al configurar Google GenAI con la clave ({active_key_source}): {e}. Verifique la validez de la clave y el nombre del modelo.", icon="🚨")
         active_key_source = f"Error - Configuración fallida ({active_key_source})"
-        model = None
+        model = None # Ensure model is None if config fails
+        # Stop execution if configuration fails
         st.stop()
 else:
+    # If still no API key after disclaimer logic, show error and stop.
     available_keys_check = get_available_api_keys()
     if not available_keys_check and not st.session_state.custom_api_key:
          st.error("Error crítico: No hay claves API configuradas en st.secrets y no se ha ingresado una clave personalizada. La aplicación no puede funcionar.", icon="🚨")
@@ -565,25 +535,28 @@ if st.session_state.disclaimer_accepted:
 
                 **En resumen, utilice esta herramienta con precaución, comprendiendo sus limitaciones y siempre validando la información con fuentes confiables y, cuando sea necesario, con asesoramiento legal profesional.**
                 """)
-        if st.button("Revocar Disclaimer", key="revocar_disclaimer_main"):
+        if st.button("Revocar Disclaimer", key="revocar_disclaimer_main"): # Unique key
             st.session_state.disclaimer_accepted = False
             st.rerun()
 
 # --- Título principal y Subtítulo con Logo ---
-col_logo, col_title = st.columns([0.1, 0.9])
+col_logo, col_title = st.columns([0.1, 0.9]) # Adjust ratios as needed
 with col_logo:
-    st.image("https://i.postimg.cc/RZpJb6rq/IMG-20250407-WA0009-1.png", width=80)
+    st.image("https://i.postimg.cc/RZpJb6rq/IMG-20250407-WA0009-1.png", width=80) # Adjust width as needed
 with col_title:
     st.markdown('<h1 class="main-title">Municip.IA</h1>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">Instituto Libertad</p>', unsafe_allow_html=True)
 
 
-# --- Funciones para cargar y procesar archivos (NO CHANGES HERE) ---
+# --- Funciones para cargar y procesar archivos ---
+
+# Usar ruta relativa para la carpeta de datos (más portable)
 script_dir = os.path.dirname(__file__)
 DATABASE_DIR = os.path.join(script_dir, "data")
 
-@st.cache_data(show_spinner=False, persist="disk", max_entries=10)
+@st.cache_data(show_spinner=False, persist="disk", max_entries=10) # Caching to load files only once, added max_entries
 def load_database_files_cached(directory: str) -> Dict[str, str]:
+    """Carga y cachea el contenido de todos los archivos .txt en el directorio, invalidando el caché si los archivos cambian según el hash del contenido."""
     file_contents = {}
     if not os.path.exists(directory):
         st.warning(f"Directorio de base de datos no encontrado: {directory}")
@@ -596,89 +569,86 @@ def load_database_files_cached(directory: str) -> Dict[str, str]:
         try:
             with open(filepath, "r", encoding="utf-8") as f:
                 file_content = f.read()
-                content_hash.update(file_content.encode('utf-8'))
+                content_hash.update(file_content.encode('utf-8')) # Hash the content, not just filenames
         except Exception as e:
             st.error(f"Error al leer el archivo {filename} para calcular el hash: {e}")
-            return {}
+            return {} # Return empty dict on error to avoid using potentially incomplete data
 
     current_hash = content_hash.hexdigest()
 
     if "database_cache_key" in st.session_state and st.session_state.database_cache_key == current_hash and st.session_state.database_files:
-        return st.session_state.database_files
+        return st.session_state.database_files # Return cached data if hash is the same
 
-    st.session_state.database_files = {}
+    st.session_state.database_files = {} # Reset in-memory cache before reloading
     for filename in file_list:
         filepath = os.path.join(directory, filename)
         try:
             with open(filepath, "r", encoding="utf-8") as f:
-                st.session_state.database_files[filename] = f.read()
+                st.session_state.database_files[filename] = f.read() # Store in session_state cache
         except Exception as e:
             st.error(f"Error al leer el archivo {filename}: {e}")
 
-    st.session_state.database_cache_key = current_hash
+    st.session_state.database_cache_key = current_hash # Update cache key with content hash
     return st.session_state.database_files
 
-def load_file_content(filepath_or_uploadedfile) -> str:
-    """Carga el contenido de un archivo .txt, ya sea desde una ruta o un UploadedFile."""
+def load_file_content(filepath: str) -> str:
+    """Carga el contenido de un archivo .txt."""
     try:
-        if isinstance(filepath_or_uploadedfile, str) and filepath_or_uploadedfile.lower().endswith(".txt"):
-            # Es una ruta de archivo
-            with open(filepath_or_uploadedfile, "r", encoding="utf-8") as f:
+        if filepath.lower().endswith(".txt"):
+            with open(filepath, "r", encoding="utf-8") as f:
                 return f.read()
-        elif hasattr(filepath_or_uploadedfile, 'getvalue') and filepath_or_uploadedfile.name.lower().endswith(".txt"):
-            # Es un objeto UploadedFile de Streamlit
-            return filepath_or_uploadedfile.getvalue().decode("utf-8")
         else:
-            filename = filepath_or_uploadedfile if isinstance(filepath_or_uploadedfile, str) else getattr(filepath_or_uploadedfile, 'name', 'Archivo desconocido')
-            st.error(f"Tipo de archivo no soportado o error al procesar: {filename}")
+            st.error(f"Tipo de archivo no soportado: {filepath}")
             return ""
     except Exception as e:
-        filename = filepath_or_uploadedfile if isinstance(filepath_or_uploadedfile, str) else getattr(filepath_or_uploadedfile, 'name', 'Archivo desconocido')
-        st.error(f"Error al leer el archivo {filename}: {e}")
+        st.error(f"Error al leer el archivo {filepath}: {e}")
         return ""
 
-
 def get_file_description(filename: str) -> str:
+    """Genera una descripción genérica para un archivo basado en su nombre."""
     name_parts = filename.replace(".txt", "").split("_")
     return " ".join(word.capitalize() for word in name_parts)
 
 def discover_and_load_files(directory: str) -> Dict[str, str]:
+    """Descubre y carga todos los archivos .txt en un directorio.""" # Updated description
     file_contents = {}
     if not os.path.exists(directory):
         st.warning(f"Directorio de base de datos no encontrado: {directory}")
         return file_contents
 
     for filename in os.listdir(directory):
-        if filename.endswith(".txt"):
+        if filename.endswith(".txt"): # Only process .txt files
             filepath = os.path.join(directory, filename)
             file_contents[filename] = load_file_content(filepath)
     return file_contents
 
 
-# --- Prompt mejorado MODIFICADO para enviar TODOS los documentos (NO CHANGES HERE) ---
+# --- Prompt mejorado MODIFICADO para enviar TODOS los documentos ---
 def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, query: str) -> str:
+    """Crea el prompt para el modelo, incluyendo TODA la información de la base de datos y archivos adjuntos."""
     prompt_parts = [
         "Eres Municip.IA, un asesor legal virtual **altamente proactivo y comprensivo**, especializado en **derecho municipal de Chile**, con un enfoque particular en asistir a alcaldes y concejales. Tu experiencia abarca una amplia gama de temas relacionados con la administración y normativa municipal chilena.",
         "Tu objetivo principal es **entender a fondo la pregunta del usuario, anticipando incluso aspectos legales implícitos o no mencionados explícitamente debido a su posible falta de conocimiento legal especializado.** Debes **responder de manera completa y proactiva, como un verdadero asesor legal**, no solo respondiendo directamente a lo preguntado, sino también **identificando posibles implicaciones jurídicas, figuras legales relevantes y brindando una asesoría integral.**  Siempre **responde directamente a las preguntas del usuario de manera precisa y concisa, citando la fuente legal o normativa** que respalda tu respuesta. **Prioriza el uso de un lenguaje claro y accesible, evitando jerga legal compleja, para que la información sea fácilmente comprensible para concejales y alcaldes, incluso si no tienen formación legal.**",
         "Considera que los usuarios son **alcaldes y concejales que pueden no tener un conocimiento jurídico profundo**. Por lo tanto, **interpreta sus preguntas en un contexto práctico y legal municipal, anticipando sus necesidades de asesoramiento más allá de lo que pregunten literalmente.**",
         "**MANUAL DE CONCEJALES Y CONCEJALAS (USO EXCLUSIVO COMO CONTEXTO GENERAL):**",
         "Se te proporciona un documento extenso sobre derecho municipal chileno y funciones de concejales. **Utiliza este documento ÚNICAMENTE como contexto general y para entender el marco del derecho municipal chileno y las funciones de los concejales.  NO debes citar este manual en tus respuestas, ni mencionar su nombre en absoluto.  Úsalo para comprender mejor las preguntas y para identificar las leyes o normativas relevantes a las que aludir en tus respuestas, basándote en tu entrenamiento legal.**",
-        "**INFORMACIÓN DE LA BASE DE DATOS (NORMAS LEGALES):**"
+        "**INFORMACIÓN DE LA BASE DE DATOS (NORMAS LEGALES):**" # Modificado el título
     ]
 
-    if database_files_content:
-        for filename, content in database_files_content.items():
+    if database_files_content: # Modificado para usar database_files_content directamente
+        for filename, content in database_files_content.items(): # Iterar sobre TODOS los archivos
             if filename == "MANUAL DE CONCEJALES Y CONCEJALAS.txt":
-                continue
+                continue # Exclude manual from this section, it's already handled above
             description = get_file_description(filename)
+            # Modified line to remove .txt from filename in prompt
             prompt_parts.append(f"\n**{description} ({filename.replace('.txt', '')}):**\n{content}\n")
     else:
-        prompt_parts.append("No se ha cargado información de la base de datos.\n")
+        prompt_parts.append("No se ha cargado información de la base de datos.\n") # Modificado el mensaje
 
     prompt_parts.append("**INFORMACIÓN ADICIONAL PROPORCIONADA POR EL USUARIO:**")
     prompt_parts.append(uploaded_data if uploaded_data else "No se proporcionó información adicional.\n")
 
-    prompt_parts.extend([
+    prompt_parts.extend([ # Usamos extend para añadir múltiples líneas de una vez
         "**ANÁLISIS PROACTIVO DE LA PREGUNTA DEL USUARIO:**",
         "**Antes de responder, realiza un análisis profundo de la pregunta del usuario.**  Considera lo siguiente:",
         """
@@ -743,7 +713,8 @@ def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, qu
         "**Historial de conversación:**"
     ])
 
-    for msg in st.session_state.messages[:-1]: # Exclude the current user prompt itself from history in prompt
+    # Añadir historial de conversación
+    for msg in st.session_state.messages[:-1]:
         if msg["role"] == "user":
             prompt_parts.append(f"Usuario: {msg['content']}\n")
         else:
@@ -763,7 +734,8 @@ if "database_cache_key" not in st.session_state:
 
 # --- Carga inicial de archivos ---
 def load_database_files_on_startup():
-    st.session_state.database_files = load_database_files_cached(DATABASE_DIR)
+    """Carga todos los archivos de la base de datos al inicio."""
+    st.session_state.database_files = load_database_files_cached(DATABASE_DIR) # Load/refresh database files
     return len(st.session_state.database_files)
 
 database_files_loaded_count = load_database_files_on_startup()
@@ -804,7 +776,7 @@ with st.sidebar:
     st.markdown('<div class="sidebar-logo-container"></div>', unsafe_allow_html=True)
     st.header("Historial de Conversaciones")
 
-    disclaimer_status_expander = st.expander("Estado del Disclaimer", expanded=True)
+    disclaimer_status_expander = st.expander("Estado del Disclaimer", expanded=True) # Initially expanded
     with disclaimer_status_expander:
         if st.session_state.disclaimer_accepted:
             st.success("Disclaimer Aceptado", icon="✅")
@@ -815,74 +787,61 @@ with st.sidebar:
             st.warning("Disclaimer No Aceptado", icon="⚠️")
             st.markdown("Para usar Municip.IA, debes aceptar el Disclaimer.")
 
+    # --- API Key Status (Uses active_key_source determined earlier) ---
     st.subheader("Estado API Key Activa")
     if st.session_state.disclaimer_accepted:
         if active_key_source.startswith("Error"):
             st.error(f"Estado: {active_key_source}", icon="🚨")
-        elif active_key_source == "Ninguna":
+        elif active_key_source == "Ninguna": # Should be handled by earlier stop(), but safeguard
              st.warning("Determinando clave API...", icon="⏳")
         else:
             st.success(f"Usando: {active_key_source}", icon="🔑")
-            # Display recently used keys for debugging/info if not using custom key
-            if not st.session_state.custom_api_key and st.session_state.recently_used_api_keys:
-                 with st.expander("Claves de sesión usadas recientemente (para rotación)", expanded=False):
-                      st.caption(f"Se evitarán estas {len(st.session_state.recently_used_api_keys)} claves en la próxima rotación si es posible:")
-                      for r_key in st.session_state.recently_used_api_keys:
-                          st.markdown(f"- `{r_key}`")
 
-
-            # Button to force re-assign a new random key for the session (this is different from automatic rotation)
+            # Button to force re-assign a new random key for the session
             if not st.session_state.custom_api_key and st.session_state.session_api_key_name:
-                if st.button("🔄 Forzar Nueva Clave de Sesión"):
-                    if rotate_api_key(): # Use the rotation logic
-                        st.success(f"Nueva clave asignada ({st.session_state.session_api_key_name}). Recargando...", icon="✅")
-                        time.sleep(1.5)
-                        st.rerun()
-                    else:
-                        st.info("No se pudo asignar una clave diferente o no hay más claves disponibles para forzar un cambio inmediato.")
+                if st.button("🔄 Asignar Nueva Clave a Sesión"):
+                    available_keys = get_available_api_keys()
+                    current_key = st.session_state.session_api_key_name
+                    other_keys = [k for k in available_keys if k != current_key]
 
+                    if other_keys:
+                         new_key = random.choice(other_keys)
+                    elif available_keys: # If only one key exists, or only the current one
+                         new_key = random.choice(available_keys) # Reassign potentially the same one if only one exists
+                    else:
+                         new_key = None
+
+                    if new_key:
+                         st.session_state.session_api_key_name = new_key
+                         st.success(f"Nueva clave asignada ({new_key}). Recargando...", icon="✅")
+                         time.sleep(1.5)
+                         st.rerun()
+                    else:
+                         st.error("No hay claves API disponibles para reasignar.")
     else:
         st.info("Esperando aceptación del Disclaimer...")
 
 
-    st.subheader("API Key Personalizada (Opcional)")
-    custom_api_key_input = st.text_input("Ingresa tu API Key personalizada:", type="password", value=st.session_state.custom_api_key, help="Si deseas usar una API Key diferente a las configuradas en st.secrets, puedes ingresarla aquí. Esto tiene prioridad sobre las API Keys de st.secrets y deshabilita la rotación automática.")
+    st.subheader("API Key Personalizada (Opcional)") # Custom API Key Input
+    custom_api_key_input = st.text_input("Ingresa tu API Key personalizada:", type="password", value=st.session_state.custom_api_key, help="Si deseas usar una API Key diferente a las configuradas en st.secrets, puedes ingresarla aquí. Esto tiene prioridad sobre las API Keys de st.secrets.")
     if custom_api_key_input != st.session_state.custom_api_key:
         st.session_state.custom_api_key = custom_api_key_input
-        if not custom_api_key_input and st.session_state.session_api_key_name is None: # If custom key removed and no session key
-            available_keys = get_available_api_keys()
-            if available_keys:
-                st.session_state.session_api_key_name = random.choice(available_keys) # Assign a new session key
-                # Add to recent list
-                if st.session_state.session_api_key_name not in st.session_state.recently_used_api_keys:
-                    st.session_state.recently_used_api_keys.append(st.session_state.session_api_key_name)
-                    if len(st.session_state.recently_used_api_keys) > MAX_RECENT_KEYS_TO_AVOID:
-                        st.session_state.recently_used_api_keys.pop(0)
-
-        st.rerun()
+        st.rerun() # Rerun to apply the new API key
 
     st.subheader("Cargar Datos Adicionales")
-    uploaded_files = st.file_uploader("Adjuntar archivos adicionales (.txt)", type=["txt"], help="Puedes adjuntar archivos .txt adicionales para que sean considerados en la respuesta.", accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Adjuntar archivos adicionales (.txt)", type=["txt"], help="Puedes adjuntar archivos .txt adicionales para que sean considerados en la respuesta.", accept_multiple_files=True) # Updated to only accept .txt
     if uploaded_files:
-        new_content_uploaded = False
-        temp_uploaded_content = ""
+        st.session_state.uploaded_files_content = ""
         for uploaded_file in uploaded_files:
             try:
-                # Use the updated load_file_content that handles UploadedFile objects
-                content = load_file_content(uploaded_file)
-                if content: # Only add if content was successfully read
-                    temp_uploaded_content += content + "\n\n"
-                    new_content_uploaded = True
+                content = load_file_content(uploaded_file.name) # Pass filename for correct reading
+                st.session_state.uploaded_files_content += content + "\n\n"
             except Exception as e:
                 st.error(f"Error al leer el archivo adjunto {uploaded_file.name}: {e}")
-        
-        if new_content_uploaded: # Only update session state if new valid content was processed
-            st.session_state.uploaded_files_content = temp_uploaded_content
-            # No rerun needed here, will be used in next prompt
 
     if st.button("Limpiar archivos adicionales"):
         st.session_state.uploaded_files_content = ""
-        # No rerun needed immediately, will take effect on next prompt or if user re-uploads
+        st.rerun()
 
     new_conversation_name = st.text_input("Título conversación:", value=st.session_state.current_conversation_name)
     if new_conversation_name != st.session_state.current_conversation_name:
@@ -894,39 +853,31 @@ with st.sidebar:
             if len(st.session_state.saved_conversations) >= 5:
                 unpinned_conversations = [name for name, data in st.session_state.saved_conversations.items() if not data['pinned']]
                 if unpinned_conversations:
-                    # Find oldest unpinned by looking at the first message's timestamp (content as proxy)
-                    # This is a bit fragile; a proper timestamp would be better.
-                    oldest_unpinned = min(unpinned_conversations, key=lambda k: (st.session_state.saved_conversations[k]['messages'][0]['content'] if st.session_state.saved_conversations[k]['messages'] else ""))
+                    oldest_unpinned = min(st.session_state.saved_conversations, key=lambda k: st.session_state.saved_conversations[k]['messages'][0]['content'] if st.session_state.saved_conversations[k]['messages'] else "")
                     delete_conversation(oldest_unpinned)
-            st.session_state.messages_before_save = list(st.session_state.messages) # Make a copy
+            st.session_state.messages_before_save = list(st.session_state.messages)
             save_conversation(st.session_state.current_conversation_name, st.session_state.messages_before_save)
             st.success("Conversación guardada!", icon="💾")
-            st.rerun() # Rerun to update saved conversations list display
+            st.rerun()
     with col2:
         if st.button("Borrar Chat", key="clear_chat_sidebar"):
-            st.session_state.messages = [st.session_state.messages[0]] # Keep initial assistant message
+            st.session_state.messages = [st.session_state.messages[0]]
             st.rerun()
     with col3:
         is_pinned = st.session_state.saved_conversations.get(st.session_state.current_conversation_name, {}).get('pinned', False)
-        if st.button("📌" if not is_pinned else " 📍 ", key="pin_button"): # Using different icon for pinned
+        if st.button("📌" if not is_pinned else " 📌 ", key="pin_button"):
             if st.session_state.current_conversation_name in st.session_state.saved_conversations:
                 if is_pinned:
                     unpin_conversation(st.session_state.current_conversation_name)
                 else:
                     pin_conversation(st.session_state.current_conversation_name)
-                st.rerun() # Rerun to update pinned status display
+                st.rerun()
 
     st.subheader("Conversaciones Guardadas")
-    # Sort by pinned status first (True comes before False), then by name
-    sorted_conversations = sorted(
-        st.session_state.saved_conversations.items(),
-        key=lambda item: (not item[1]['pinned'], item[0]) # Pinned first, then alphabetical
-    )
-    for name, data in sorted_conversations:
-        cols = st.columns([0.7, 0.15, 0.15]) # Adjusted column ratios
+    for name, data in sorted(st.session_state.saved_conversations.items(), key=lambda item: item[1]['pinned'], reverse=True):
+        cols = st.columns([0.7, 0.2, 0.1])
         with cols[0]:
-            pin_icon = "📍" if data['pinned'] else "📌"
-            if st.button(f"{pin_icon} {name}", key=f"load_{name}"):
+            if st.button(f"{'📌' if data['pinned'] else ''} {name}", key=f"load_{name}"):
                 load_conversation(name)
                 st.session_state.current_conversation_name = name
                 st.rerun()
@@ -934,7 +885,6 @@ with st.sidebar:
             if st.button("🗑️", key=f"delete_{name}"):
                 delete_conversation(name)
                 st.rerun()
-
 
     st.markdown("---")
     st.header("Acerca de")
@@ -949,76 +899,87 @@ with st.sidebar:
     st.subheader("Datos Cargados")
     if st.session_state.database_files:
         st.markdown(f"**Base de Datos:** Se ha cargado información desde {database_files_loaded_count} archivo(s) automáticamente.")
-        if st.button("Recargar Base de Datos", key="refresh_db_button"):
+        if st.button("Recargar Base de Datos", key="refresh_db_button"): # Refresh Database Button
             database_files_loaded_count = load_database_files_on_startup()
             st.success("Base de datos recargada.", icon="🔄")
-            st.rerun() # Rerun to reflect any changes immediately
     if st.session_state.uploaded_files_content:
-        # Count based on actual files processed, not just st.file_uploader object
-        # This requires parsing uploaded_files_content or storing count separately if precise count is needed
-        # For simplicity, we'll assume if content exists, at least one file was uploaded.
-        st.markdown(f"**Archivos Adicionales:** Se ha cargado información desde archivos adjuntos.")
+        uploaded_file_count = 0
+        if uploaded_files: # Check if uploaded_files is defined to avoid errors on initial load
+            uploaded_file_count = len(uploaded_files)
+        st.markdown(f"**Archivos Adicionales:** Se ha cargado información desde {uploaded_file_count} archivo(s).") # Updated description to remove PDF
     if not st.session_state.database_files and not st.session_state.uploaded_files_content:
         st.warning("No se ha cargado ninguna base de datos del reglamento ni archivos adicionales.")
     elif not st.session_state.database_files:
         st.warning("No se ha encontrado o cargado la base de datos del reglamento automáticamente.")
 
 # --- Área de chat ---
-if st.session_state.disclaimer_accepted:
+if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accepted
     for message in st.session_state.messages:
         with st.container():
             if message["role"] == "user":
                 st.markdown(f'<div class="chat-message user-message"><div class="message-content">{message["content"]}</div></div>', unsafe_allow_html=True)
             else:
-                with st.chat_message("assistant", avatar="https://i.postimg.cc/K853Hw5Y/IMG-20250407-WA0005-2.png"):
+                with st.chat_message("assistant", avatar="https://i.postimg.cc/K853Hw5Y/IMG-20250407-WA0005-2.png"): # Moved avatar here
                     st.markdown(f'<div class="message-content">{message["content"]}</div>', unsafe_allow_html=True)
 
+    # --- Campo de entrada para el usuario ---
     if prompt := st.chat_input("Escribe tu consulta...", key="chat_input"):
         st.session_state.messages.append({"role": "user", "content": prompt})
-        st.rerun() # Rerun to display user message immediately
 
-    # Process the last user message if it hasn't been processed yet
-    # This structure ensures that processing happens after the rerun for displaying user message
-    if st.session_state.messages[-1]["role"] == "user":
-        user_prompt_content = st.session_state.messages[-1]["content"]
-
+        # Immediately display user message
         with st.container():
-            prompt_completo = create_prompt(st.session_state.database_files, st.session_state.uploaded_files_content, user_prompt_content)
+            st.markdown(f'<div class="chat-message user-message"><div class="message-content">{prompt}</div></div>', unsafe_allow_html=True)
+
+        # Process query and generate assistant response in a separate container
+        with st.container(): # New container for processing and assistant response
+            # **YA NO ANALIZAMOS LA CONSULTA - ENVIAMOS TODOS LOS ARCHIVOS**
+            # relevant_filenames = analyze_query(prompt, st.session_state.database_files) # REMOVE THIS LINE
+            # relevant_database_data = {filename: st.session_state.database_files[filename] for filename in relevant_filenames} # REMOVE THIS LINE
+
+            # Construir el prompt completo - AHORA CON TODOS LOS ARCHIVOS
+            prompt_completo = create_prompt(st.session_state.database_files, st.session_state.uploaded_files_content, prompt) # MODIFICADO
 
             with st.chat_message("assistant", avatar="https://i.postimg.cc/K853Hw5Y/IMG-20250407-WA0005-2.png"):
                 message_placeholder = st.empty()
                 full_response = ""
+                is_typing = True  # Indicar que el asistente está "escribiendo"
                 typing_placeholder = st.empty()
                 typing_placeholder.markdown('<div class="assistant-typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>', unsafe_allow_html=True)
-                response_generated_successfully = False
-                try:
-                    if not model: # Should have been caught earlier, but as a safeguard
-                        st.error("El modelo de IA no está configurado. No se puede generar respuesta.", icon="🚨")
-                        st.stop()
 
-                    response_stream = model.generate_content(prompt_completo, stream=True)
+                try:
+                    response = model.generate_content(prompt_completo, stream=True) # Capture the response object
+
+                    # Add summary and detailed response structure
+                    summary_finished = False
+                    detailed_response = ""
                     full_response_chunks = []
 
-                    for chunk in response_stream:
+                    for chunk in response: # Iterate over the response object
                         chunk_text = chunk.text or ""
                         full_response_chunks.append(chunk_text)
                         full_response = "".join(full_response_chunks)
-                        message_placeholder.markdown(full_response + "▌")
-                        time.sleep(0.015)
 
-                    # Final check on response content after stream
-                    if not hasattr(response_stream, '_completion_done') or not response_stream._completion_done:
-                        # This check might be specific to how the library handles empty/failed streams.
-                        # A more robust check is if full_response is empty or very short after trying.
-                        pass # Continue to check full_response content
 
-                    if not full_response.strip() or (hasattr(response_stream, 'candidates') and not response_stream.candidates):
-                         full_response = """
+                        if not summary_finished:
+                            # Basic heuristic to detect summary end (can be improved)
+                            if "\nDesarrollo:" in full_response:
+                                summary_finished = True
+                                message_placeholder.markdown(full_response + "▌") # Show both summary and start of development
+                            else:
+                                message_placeholder.markdown(full_response + "▌") # Still in summary part
+                        else: # After summary, just append
+                             message_placeholder.markdown(full_response + "▌")
+
+                        time.sleep(0.015)  # Slightly faster
+
+
+                    if not response.candidates: # Check if candidates is empty AFTER stream completion
+                        full_response = """
                         Lo siento, no pude generar una respuesta adecuada para tu pregunta con la información disponible.
                         **Posibles razones:**
                         * La pregunta podría ser demasiado compleja o específica.
                         * La información necesaria para responder podría no estar en la base de datos actual o en los archivos adjuntos.
-                        * Limitaciones del modelo de IA o la clave API actual podría tener restricciones.
+                        * Limitaciones del modelo de IA.
 
                         **¿Qué puedes intentar?**
                         * **Reformula tu pregunta:**  Intenta hacerla más simple o más directa.
@@ -1026,33 +987,19 @@ if st.session_state.disclaimer_accepted:
                         * **Carga archivos adicionales:**  Si tienes documentos relevantes, adjúntalos para ampliar la base de conocimiento.
                         * **Consulta fuentes legales adicionales:**  Esta herramienta es un apoyo, pero no reemplaza el asesoramiento de un abogado especializado.
                         """
-                        st.warning("No se pudo generar una respuesta válida. Consulta la sección de ayuda en el mensaje del asistente.", icon="⚠️")
-                    else:
-                        response_generated_successfully = True
+                        st.error("No se pudo generar una respuesta válida. Consulta la sección de ayuda en el mensaje del asistente.", icon="⚠️")
 
-
-                    typing_placeholder.empty()
+                    typing_placeholder.empty()  # Eliminar "escribiendo..." al finalizar
+                    is_typing = False
                     message_placeholder.markdown(full_response)
+
 
                 except Exception as e:
                     typing_placeholder.empty()
-                    st.error(f"Ocurrió un error inesperado al generar la respuesta: {e}. Por favor, intenta de nuevo más tarde.", icon="🚨")
+                    is_typing = False
+                    st.error(f"Ocurrió un error inesperado al generar la respuesta: {e}. Por favor, intenta de nuevo más tarde.", icon="🚨") # More prominent error icon
                     full_response = f"Ocurrió un error inesperado: {e}. Por favor, intenta de nuevo más tarde."
-                    response_generated_successfully = False # Explicitly mark as failed
 
                 st.session_state.messages.append({"role": "assistant", "content": full_response})
-
-                # --- !!! API KEY ROTATION LOGIC !!! ---
-                if response_generated_successfully and not st.session_state.custom_api_key:
-                    if rotate_api_key():
-                        st.toast(f"Cambiando a una nueva API Key de sesión: {st.session_state.session_api_key_name}. La página se recargará.", icon="🔄")
-                        time.sleep(2) # Give user time to see toast
-                        st.rerun() # Rerun to apply new key for next query
-                    else:
-                        st.toast("Se intentó rotar la API key, pero no se realizó cambio o no fue posible.", icon="ℹ️")
-                elif response_generated_successfully and st.session_state.custom_api_key:
-                    st.toast("Respuesta generada con API Key personalizada. Rotación automática deshabilitada.", icon="🔑")
-                # No rerun here if rotation didn't happen, already displayed the message.
-
-else:
-    st.warning("Para usar Municip.IA, debes aceptar el Disclaimer en la pantalla inicial o en la barra lateral.", icon="⚠️")
+else: # Disclaimer not accepted, show message instead of chat
+    st.warning("Para usar Municip.IA, debes aceptar el Disclaimer en la barra lateral.", icon="⚠️")
