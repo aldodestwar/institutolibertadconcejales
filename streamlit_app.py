@@ -9,11 +9,10 @@ from typing import List, Dict
 import hashlib
 import random # Import random module
 
-
-
 # --- Password and Disclaimer State ---
+# Bypassing password for this version
 if "authentication_successful" not in st.session_state:
-    st.session_state.authentication_successful = True # Set to True to bypass password
+    st.session_state.authentication_successful = True
 if "disclaimer_accepted" not in st.session_state:
     st.session_state.disclaimer_accepted = False
 if "password_input" not in st.session_state:
@@ -21,53 +20,31 @@ if "password_input" not in st.session_state:
 if "custom_api_key" not in st.session_state:
     st.session_state.custom_api_key = "" # Initialize custom API key state
 
-# --- NEW: Session state for the assigned API key name for this specific session ---
+# --- Session state for the assigned API key name ---
 if "session_api_key_name" not in st.session_state:
-    st.session_state.session_api_key_name = None # e.g., will store "GOOGLE_API_KEY_3"
+    st.session_state.session_api_key_name = None
 
-
-# --- Function to get available API keys (no changes needed here) ---
+# --- Function to get available API keys ---
 def get_available_api_keys() -> List[str]:
     """Checks for configured API keys in st.secrets and returns a list of available key names."""
     available_keys = []
-    # print("--- DEBUGGING st.secrets ---") # Optional debug prints
-    # print("Contents of st.secrets:", st.secrets)
     for i in range(1, 15): # Check for up to 15 API keys
         key_name = f"GOOGLE_API_KEY_{i}"
-        # Use hasattr for safer checking in case secrets structure changes
-        # And check if the key actually has a value
         try:
-            # Combine check and access for efficiency
             secret_value = getattr(st.secrets, key_name, None) or st.secrets.get(key_name, None)
-            if secret_value: # Ensure it's not empty or None
+            if secret_value:
                  available_keys.append(key_name)
-        except Exception: # Catch potential errors during access
-             pass # Ignore if key doesn't exist or causes error
-    # print("Available keys found by function:", available_keys)
-    # print("--- DEBUGGING st.secrets END ---")
+        except Exception:
+             pass
     return available_keys
 
-
-# --- Initial Screen (Password and Disclaimer - Single Step) ---
+# --- Initial Screen (Disclaimer Only) ---
 if not st.session_state.disclaimer_accepted:
     initial_screen_placeholder = st.empty()
     with initial_screen_placeholder.container():
         st.title("Acceso a Municip.IA")
-        # Removed password input
-        # password = st.text_input("Ingrese la clave de usuario", type="password", value=st.session_state.password_input) # Persist input
-
-        # Removed button for verification and password check
-        # if st.button("Verificar Clave"): # Button for verification
-        #     if password.lower() == "ilconcejales":
-        #         st.session_state.authentication_successful = True
-        #     else:
-        #         st.session_state.authentication_successful = False
-        #         st.error("Clave incorrecta. Intente nuevamente.")
-
-        # Show disclaimer always now, authentication is bypassed
-        # if st.session_state.authentication_successful: # Show disclaimer only after correct password
-        st.markdown("---") # Separator
-        with st.expander("Descargo de Responsabilidad (Leer antes de usar la IA)", expanded=False):
+        st.markdown("---")
+        with st.expander("Descargo de Responsabilidad (Leer antes de usar la IA)", expanded=False): # Expanded by default
             st.markdown("""
             **Descargo de Responsabilidad Completo:**
 
@@ -89,67 +66,58 @@ if not st.session_state.disclaimer_accepted:
         if disclaimer_accepted:
             st.session_state.disclaimer_accepted = True
 
-            # --- !!! API KEY ASSIGNMENT LOGIC !!! ---
-            # Assign a key to the session ONLY if one hasn't been assigned yet for this session
+            # --- API KEY ASSIGNMENT LOGIC ---
             if st.session_state.session_api_key_name is None:
-                available_keys = get_available_api_keys()     # <--- Obtiene la lista de disponibles
+                available_keys = get_available_api_keys()
                 if available_keys:
-                    # ---!!! AQUÍ OCURRE LA SELECCIÓN ALEATORIA !!!---
                     st.session_state.session_api_key_name = random.choice(available_keys)
-                    # --------------------------------------------------
-                    print(f"--- SESSION KEY ASSIGNED (Randomly Chosen): {st.session_state.session_api_key_name} ---") # Debug print
+                    print(f"--- SESSION KEY ASSIGNED (Randomly Chosen): {st.session_state.session_api_key_name} ---")
                 else:
-                    # Handle case where no keys are available in secrets
-                    st.session_state.session_api_key_name = None # Keep it None if assignment fails
+                    st.session_state.session_api_key_name = None
                     print("--- WARNING: No available API keys in st.secrets to assign to session. ---")
-                    # Error will be handled later if no key can be used
-            # --- !!! END OF ASSIGNMENT LOGIC !!! ---
 
+            initial_screen_placeholder.empty()
+            st.rerun()
 
-            initial_screen_placeholder.empty() # Clear initial screen
-            st.rerun() # Re-run to show main app
-
-        # Removed password persistence
-        # st.session_state.password_input = password # Update password input for persistence
-    st.stop() # Stop execution here if disclaimer not accepted
+    st.stop()
 
 # --- Configuración de la página ---
 st.set_page_config(
     page_title="Municip.IA - Instituto Libertad",
     page_icon="⚖️",
     layout="wide",
-    initial_sidebar_state="collapsed" # Changed to "collapsed"
+    initial_sidebar_state="collapsed"
 )
 
-# --- Estilos CSS personalizados ---
+# --- Estilos CSS personalizados (con mejoras visuales y de animación) ---
 st.markdown(
     """
     <style>
-    /* Ocultar el logo de GitHub */
-    .fork-ribbon {
-        display: none !important;
-    }
-
-    /* --- Variables de color para fácil modificación --- */
+    /* --- Variables de color --- */
     :root {
-        --primary-color: #004488; /* Dark Blue -  MATCHING WEBSITE HEADER BLUE */
-        --primary-hover-color: #005cb3; /* Lighter Blue for hover */
-        --secondary-bg: #f9f9f9; /* Very light gray - Website background feel */
-        --text-color-primary: #444444; /* Slightly lighter Dark Gray - Body text */
-        --text-color-secondary: #777777; /* Medium Gray - Secondary text */
-        --accent-color: #CC0000; /* Red Accent - Similar to website red */
-        --sidebar-bg: #f0f2f6; /* Light gray for sidebar background */
-        --sidebar-button-hover: #e0e0e0; /* Lighter gray for sidebar button hover */
-        --sidebar-text: #555555; /* Slightly lighter Sidebar text color - Dark gray */
+        --primary-color: #004488; /* Dark Blue */
+        --primary-hover-color: #005cb3; /* Lighter Blue */
+        --secondary-bg: #f0f2f6; /* Lighter Gray Background */
+        --text-color-primary: #333333; /* Darker Gray Text */
+        --text-color-secondary: #666666; /* Medium Gray */
+        --accent-color: #CC0000; /* Red Accent */
+        --sidebar-bg: #ffffff; /* White Sidebar */
+        --sidebar-button-hover: #e9e9f0; /* Light Gray Hover */
+        --sidebar-text: #444444; /* Dark Gray Sidebar Text */
+        --user-message-bg: #e3f2fd; /* Light Blue User Message */
+        --assistant-message-bg: #ffffff; /* White Assistant Message */
+        --border-color: #d1d5db; /* Light Gray Border */
+        --shadow-light: rgba(0, 0, 0, 0.05);
+        --shadow-medium: rgba(0, 0, 0, 0.08);
     }
 
     body {
-        background-color: var(--secondary-bg); /* Use secondary-bg for body background */
+        background-color: var(--secondary-bg);
         color: var(--text-color-primary);
-        font-family: sans-serif;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Nicer Font */
         overflow-y: scroll;
         opacity: 0;
-        animation: fadeIn 0.5s ease-in-out forwards;
+        animation: fadeIn 0.6s ease-in-out forwards;
     }
 
     @keyframes fadeIn {
@@ -157,295 +125,334 @@ st.markdown(
         to { opacity: 1; }
     }
 
-    /* --- Título Principal con degradado sutil --- */
+    /* --- Título Principal --- */
     .main-title {
-        font-size: 2.7em;
-        font-weight: bold;
-        margin-bottom: 0.1em;
-        color: var(--primary-color); /* Use primary-color for main title */
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
-        transition: transform 0.3s ease-in-out;
+        font-size: 2.9em; /* Slightly larger */
+        font-weight: 700; /* Bolder */
+        margin-bottom: 0.05em;
+        color: var(--primary-color);
+        text-shadow: 1px 1px 3px var(--shadow-light);
+        transition: transform 0.3s ease-out;
     }
     .main-title:hover {
-        transform: scale(1.02);
+        transform: scale(1.01); /* Subtle hover scale */
     }
 
-    /* --- Subtítulo con ligera demora en la animación --- */
+    /* --- Subtítulo --- */
     .subtitle {
-        font-size: 1.2em;
-        color: var(--text-color-secondary); /* Use text-color-secondary for subtitle */
-        margin-bottom: 1.2em;
+        font-size: 1.3em;
+        color: var(--text-color-secondary);
+        margin-bottom: 1.5em;
         opacity: 0;
-        animation: slideUp 0.6s ease-out forwards;
+        animation: slideUp 0.7s ease-out 0.2s forwards; /* Delayed slide up */
     }
 
     @keyframes slideUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 0.7; transform: translateY(0); }
+        from { opacity: 0; transform: translateY(25px); }
+        to { opacity: 0.8; transform: translateY(0); }
     }
 
     /* --- Barra lateral --- */
     .sidebar .sidebar-content {
-        background-color: var(--sidebar-bg); /* Light gray sidebar background */
-        padding: 1rem;
+        background-color: var(--sidebar-bg);
+        padding: 1.5rem;
+        border-right: 1px solid var(--border-color); /* Subtle border */
     }
 
-    /* --- Contenedor de Mensajes con sombra sutil --- */
+    /* --- Contenedor de Mensajes --- */
     .stChatContainer {
-        border-radius: 0.7em;
+        border-radius: 10px; /* Slightly rounder */
         overflow: hidden;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-        transition: box-shadow 0.3s ease;
+        box-shadow: 0 5px 15px var(--shadow-medium); /* Enhanced shadow */
+        transition: box-shadow 0.35s ease;
+        background-color: #ffffff; /* Ensure white background */
+        padding: 10px; /* Add padding inside container */
     }
     .stChatContainer:hover {
-        box-shadow: 0 6px 12px rgba(0,0,0,0.07);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
     }
 
-    /* --- Mensajes del Chat (Animación de entrada mejorada) --- */
+    /* --- Mensajes del Chat --- */
     .chat-message {
-        padding: 0.8em 1.2em;
-        border-radius: 1em;
-        margin-bottom: 1.2rem;
-        font-size: 1rem;
-        line-height: 1.5;
+        padding: 0.9em 1.3em;
+        border-radius: 18px; /* More rounded */
+        margin-bottom: 1.3rem;
+        font-size: 1.05rem; /* Slightly larger text */
+        line-height: 1.6;
         width: fit-content;
-        max-width: 80%;
+        max-width: 85%; /* Allow slightly wider */
         display: flex;
         flex-direction: column;
-        transform: translateY(10px);
+        transform: translateY(15px);
         opacity: 0;
-        animation: fadeInUp 0.3s ease-out forwards;
+        animation: fadeInUp 0.4s ease-out forwards;
         overflow-wrap: break-word;
+        box-shadow: 0 2px 5px var(--shadow-light); /* Subtle shadow on messages */
+        border: 1px solid transparent; /* Base border */
     }
 
     @keyframes fadeInUp {
         to { opacity: 1; transform: translateY(0); }
-        from { opacity: 0; transform: translateY(10px); }
+        from { opacity: 0; transform: translateY(15px); }
     }
 
-
     .user-message {
-        background-color: #e6e6e6; /* Lighter gray for user messages */
-        color: var(--text-color-primary);
+        background-color: var(--user-message-bg); /* Light blue */
+        color: #191970; /* Darker blue text for contrast */
         align-self: flex-end;
-        border-left: 4px solid var(--accent-color);
-        box-shadow: 1px 1px 3px rgba(0,0,0,0.05);
+        border-left: 5px solid var(--primary-color); /* Thicker accent border */
+        margin-left: auto; /* Ensure alignment */
     }
 
     .assistant-message {
-        background-color: white; /* White for assistant messages */
+        background-color: var(--assistant-message-bg);
         color: var(--text-color-primary);
         align-self: flex-start;
-        border-left: 4px solid #cccccc; /* Light gray border */
-        box-shadow: 1px 1px 3px rgba(0,0,0,0.08);
-        transition: box-shadow 0.3s ease;
+        border-left: 5px solid var(--border-color);
+        transition: box-shadow 0.3s ease, border-color 0.3s ease;
+        margin-right: auto; /* Ensure alignment */
     }
     .assistant-message:hover {
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 8px var(--shadow-medium);
+        border-left-color: var(--primary-hover-color); /* Highlight border on hover */
     }
 
     .message-content {
         word-wrap: break-word;
     }
 
-    /* --- Campo de Entrada de Texto (Bordes suaves y foco animado) --- */
+    /* --- Campo de Entrada de Texto --- */
     .stTextInput > div > div > div > input {
-        border: 1.5px solid #cccccc; /* Light gray input border */
-        border-radius: 0.5em;
-        padding: 0.7em 1em;
+        border: 2px solid var(--border-color); /* Thicker border */
+        border-radius: 8px; /* Rounder */
+        padding: 0.8em 1.1em;
         transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        font-size: 1rem;
     }
     .stTextInput > div > div > div > input:focus {
         border-color: var(--primary-color);
-        box-shadow: 0 0 5px rgba(var(--primary-color-rgb), 0.5); /* Needs --primary-color-rgb definition if used */
+        box-shadow: 0 0 8px rgba(0, 68, 136, 0.3); /* Softer focus shadow */
         outline: none;
     }
 
-    /* --- Botones (Efecto de elevación y onda más sutil) --- */
+    /* --- Botones Principales --- */
     .stButton > button {
         background-color: var(--primary-color);
         color: white;
         border: none;
-        border-radius: 0.5em;
-        padding: 0.7em 1.5em;
-        font-weight: 500;
+        border-radius: 8px; /* Rounder */
+        padding: 0.8em 1.6em;
+        font-weight: 600; /* Bolder */
         text-transform: none;
-        letter-spacing: 0.03em;
+        letter-spacing: 0.04em;
         cursor: pointer;
         position: relative;
         overflow: hidden;
         transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.12);
     }
     .stButton > button:hover {
         background-color: var(--primary-hover-color);
-        transform: translateY(-1px);
-        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px); /* More lift */
+        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.18);
     }
     .stButton > button:focus {
         outline: none;
-        box-shadow: 0 0 0 2px rgba(0, 131, 143, 0.4); /* Original color, adjust if needed */
+        box-shadow: 0 0 0 3px rgba(0, 131, 143, 0.3); /* Slightly thicker focus ring */
     }
+    /* Remove ripple effect for cleaner look */
     .stButton > button::before {
-        content: '';
-        position: absolute;
-        top: var(--mouse-y);
-        left: var(--mouse-x);
-        transform: translate(-50%, -50%);
-        background: rgba(255, 255, 255, 0.2);
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        opacity: 0;
-        transition: opacity 0.4s ease, width 0.6s ease, height: 0.6s ease;
-    }
-    .stButton > button:active::before {
-        opacity: 1;
-        width: 0%;
-        height: 0%;
+        content: none;
     }
 
-    /* --- Contenedor del Logo en la Barra Lateral (Animación sutil) --- */
+    /* --- Contenedor del Logo en la Barra Lateral --- */
     .sidebar-logo-container {
-        width: 120px;
-        height: 120px;
+        width: 100px; /* Adjusted size */
+        height: 100px;
         border-radius: 50%;
         overflow: hidden;
-        background-image: url('https://i.postimg.cc/RZpJb6rq/IMG-20250407-WA0009-1.png')
+        background-image: url('https://i.postimg.cc/RZpJb6rq/IMG-20250407-WA0009-1.png');
         background-size: cover;
         background-position: center;
-        margin-bottom: 1.2em;
-        transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        margin: 0 auto 1.5em auto; /* Center horizontally */
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease; /* Added bounce */
+        box-shadow: 0 4px 8px var(--shadow-medium);
     }
     .sidebar-logo-container:hover {
-        transform: rotate(5deg) scale(1.05);
-        border-radius: 50%; /* Make sidebar logo rounded too for consistency */
+        transform: rotate(8deg) scale(1.1); /* More playful hover */
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     }
 
     /* --- Títulos de la Barra Lateral --- */
-    .sidebar .st-bb {
-        font-weight: bold;
-        margin-bottom: 0.6em;
-        color: var(--text-color-primary);
-        border-bottom: 1px solid #dddddd; /* Lighter border */
-        padding-bottom: 0.4em;
+    .sidebar .st-emotion-cache-10trblm { /* Target sidebar headers more specifically */
+        font-weight: 600; /* Bolder */
+        margin-bottom: 0.7em;
+        color: var(--primary-color); /* Use primary color */
+        border-bottom: 2px solid var(--primary-color); /* Thicker border */
+        padding-bottom: 0.5em;
+        font-size: 1.1em;
     }
 
-    /* --- Botones de la Barra Lateral (Más sutiles) --- */
+    /* --- Botones de la Barra Lateral --- */
     .sidebar .stButton > button {
         background-color: transparent;
-        color: var(--text-color-primary);
-        border-radius: 0.4em;
-        padding: 0.4em 0.8em;
-        font-size: 0.9em;
-        font-weight: 400;
+        color: var(--sidebar-text);
+        border-radius: 6px;
+        padding: 0.5em 0.9em;
+        font-size: 0.95em;
+        font-weight: 500; /* Slightly bolder */
         box-shadow: none;
-        transition: background-color 0.3s ease-in-out, transform 0.2s ease-out;
+        width: 100%; /* Make buttons full width */
+        text-align: left; /* Align text left */
+        transition: background-color 0.25s ease-in-out, transform 0.2s ease-out, color 0.2s ease;
+        border: 1px solid transparent;
     }
     .sidebar .stButton > button:hover {
         background-color: var(--sidebar-button-hover);
-        transform: translateX(1px);
+        transform: translateX(2px);
+        color: var(--primary-color); /* Change text color on hover */
+        border-color: #d1d5db; /* Add subtle border on hover */
     }
     .sidebar .stButton > button:focus {
-        background-color: rgba(0, 131, 143, 0.1); /* Original color, adjust if needed */
+        background-color: rgba(0, 68, 136, 0.1); /* Lighter primary focus */
+        border-color: var(--primary-color);
     }
 
-    /* --- Separadores más ligeros --- */
+    /* --- Separadores --- */
     hr {
-        border-top: 1px solid #dddddd; /* Lighter hr color */
-        margin: 1em 0;
+        border-top: 1px solid var(--border-color);
+        margin: 1.5em 0; /* More spacing */
     }
 
     /* --- Enlaces en la Barra Lateral --- */
     .sidebar a {
         color: var(--primary-color);
         text-decoration: none;
-        transition: color 0.3s ease;
+        font-weight: 500;
+        transition: color 0.3s ease, text-decoration 0.3s ease;
     }
     .sidebar a:hover {
         color: var(--primary-hover-color);
+        text-decoration: underline;
     }
 
-    /* --- Subtítulos de la Barra Lateral --- */
-    .sidebar .st-bb + div {
-        margin-top: 0.6em;
-        margin-bottom: 0.2em;
+    /* --- Subtítulos/Labels en la Barra Lateral --- */
+     .sidebar .st-emotion-cache-16idsys p { /* Target labels like 'API Key Personalizada' */
+        margin-top: 0.8em;
+        margin-bottom: 0.3em;
         font-size: 0.9em;
         color: var(--text-color-secondary);
+        font-weight: 500;
     }
 
-    /* --- Contenedor de Conversaciones Guardadas (Hover sutil) --- */
-    .sidebar div[data-testid="stVerticalBlock"] > div > div {
+    /* --- Contenedor de Conversaciones Guardadas --- */
+    .sidebar div[data-testid="stVerticalBlock"] > div > div[data-testid="stButton"] { /* Target saved convo buttons */
         transition: background-color 0.2s ease-in-out;
-        border-radius: 0.4em;
+        border-radius: 6px;
         padding: 0.1em 0;
-        margin-bottom: 0.05em;
+        margin-bottom: 0.1em;
     }
-    .sidebar div[data-testid="stVerticalBlock"] > div > div:hover {
-        background-color: rgba(0, 0, 0, 0.03);
-    }
-
-    /* --- Estilo específico para el botón de "📌" (Más integrado) --- */
-    .sidebar .stButton > button:nth-child(3) {
-        font-size: 0.7em;
-        padding: 0.3em 0.6em;
-        border-radius: 0.3em;
-        background-color: rgba(0, 131, 143, 0.1); /* Original color, adjust if needed */
-        color: var(--primary-color);
-    }
-    .sidebar .stButton > button:nth-child(3):hover {
-        background-color: rgba(0, 131, 143, 0.2); /* Original color, adjust if needed */
+    .sidebar div[data-testid="stVerticalBlock"] > div > div[data-testid="stButton"]:hover {
+        background-color: rgba(0, 0, 0, 0.04); /* Slightly darker hover */
     }
 
-    /* --- Rounded Logo in Main Title - More Specific --- */
-    .stApp .element-container:nth-child(3) div[data-testid="stImage"] > div > img {
-        border-radius: 50%; /* Ensure rounded corners */
-        max-width: 100% !important; /* Make sure it respects container width */
-        height: auto !important;    /* Maintain aspect ratio */
+    /* --- Icon Buttons (Pin, Delete) --- */
+    .sidebar .stButton > button:contains("📌"),
+    .sidebar .stButton > button:contains("🗑️") {
+        padding: 0.4em 0.6em; /* Adjust padding */
+        font-size: 1.1em; /* Make icons slightly larger */
+        min-width: auto; /* Allow smaller button size */
+        line-height: 1;
+    }
+    .sidebar .stButton > button:contains("📌"):hover,
+    .sidebar .stButton > button:contains("🗑️"):hover {
+        background-color: rgba(204, 0, 0, 0.1); /* Reddish hover for delete/pin */
+        color: var(--accent-color);
+    }
+
+
+    /* --- Rounded Logo in Main Title --- */
+    .stApp > header { display: none; } /* Hide default Streamlit header */
+    .main-title-container {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5em; /* Adjust spacing */
+    }
+    .main-logo {
+        width: 70px; /* Adjust size */
+        height: 70px;
+        border-radius: 50%;
+        margin-right: 15px; /* Space between logo and title */
+        box-shadow: 0 3px 7px var(--shadow-medium);
+        transition: transform 0.3s ease;
+    }
+    .main-logo:hover {
+        transform: scale(1.08);
     }
 
     /* --- Rounded Avatar in Chat Messages --- */
     .stChatMessage img {
         border-radius: 50%;
+        width: 40px; /* Standard avatar size */
+        height: 40px;
+        box-shadow: 0 1px 3px var(--shadow-light);
     }
 
-    /* --- Assistant Typing Animation --- */
+    /* --- Enhanced Assistant Typing Animation --- */
     .assistant-typing {
         display: flex;
         align-items: center;
+        padding: 10px 0; /* Add some padding */
     }
-
     .typing-dot {
-        width: 6px;
-        height: 6px;
+        width: 8px; /* Larger dots */
+        height: 8px;
         border-radius: 50%;
         background-color: var(--text-color-secondary);
-        margin-right: 4px;
-        animation: typing 1.5s infinite;
+        margin: 0 4px; /* Adjust spacing */
+        opacity: 0.2;
+        animation: typing-bounce 1.4s infinite ease-in-out;
+    }
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    .typing-dot:nth-child(3) { animation-delay: 0s; }
+
+    @keyframes typing-bounce {
+        0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+        40% { transform: scale(1.0); opacity: 1; }
     }
 
-    .typing-dot:nth-child(2) {
-        animation-delay: 0.5s;
+    /* --- Blinking Cursor for Streaming --- */
+    .blinking-cursor {
+        display: inline-block;
+        width: 8px;
+        height: 1.1em; /* Match line height */
+        background-color: var(--text-color-primary);
+        animation: blink 1s step-end infinite;
+        margin-left: 2px;
+        vertical-align: bottom;
+    }
+    @keyframes blink {
+        from, to { background-color: transparent; }
+        50% { background-color: var(--text-color-primary); }
     }
 
-    .typing-dot:nth-child(3) {
-        animation-delay: 1s;
+    /* --- Styling for Expander Headers --- */
+    .stExpander > summary {
+        font-weight: 500;
+        color: var(--primary-color);
+    }
+    .stExpander > summary:hover {
+        background-color: rgba(0, 68, 136, 0.05); /* Subtle hover on expander */
     }
 
-    @keyframes typing {
-        0% {
-            opacity: 0.4;
-            transform: translateY(0);
-        }
-        50% {
-            opacity: 1;
-            transform: translateY(-2px);
-        }
-        100% {
-            opacity: 0.4;
-            transform: translateY(0);
-        }
+    /* --- Styling for Success/Warning/Error boxes --- */
+    .stAlert {
+        border-radius: 8px;
+        border-left-width: 5px; /* Thicker left border */
+        padding: 1em;
     }
+
 
     </style>
     """,
@@ -461,7 +468,6 @@ model = None # Initialize model to None
 # 1. Prioritize Custom API Key
 if st.session_state.custom_api_key:
     GOOGLE_API_KEY = st.session_state.custom_api_key
-    # Mask the key for display
     masked_key = f"{GOOGLE_API_KEY[:4]}...{GOOGLE_API_KEY[-4:]}" if len(GOOGLE_API_KEY) > 8 else GOOGLE_API_KEY
     active_key_source = f"Personalizada ({masked_key})"
     print(f"--- USING CUSTOM API KEY ---")
@@ -469,14 +475,12 @@ if st.session_state.custom_api_key:
 # 2. Use Session-Assigned Key if no Custom Key and session key exists
 elif st.session_state.session_api_key_name:
     try:
-        # Retrieve the actual key value using the name stored in session_state
         GOOGLE_API_KEY = st.secrets[st.session_state.session_api_key_name]
-        active_key_source = f"Sesión ({st.session_state.session_api_key_name})" # Show assigned key name
+        active_key_source = f"Sesión ({st.session_state.session_api_key_name})"
         print(f"--- USING SESSION ASSIGNED KEY: {st.session_state.session_api_key_name} ---")
     except KeyError:
         st.error(f"Error: La clave API asignada a la sesión ('{st.session_state.session_api_key_name}') ya no se encuentra en st.secrets. Por favor, recargue la página o contacte al administrador.", icon="🚨")
         active_key_source = "Error - Clave de sesión no encontrada"
-        # Don't stop here yet, let the final check handle it
         GOOGLE_API_KEY = None
     except Exception as e:
         st.error(f"Error inesperado al obtener la clave API de sesión: {e}", icon="🚨")
@@ -485,26 +489,22 @@ elif st.session_state.session_api_key_name:
 
 # 3. Handle case where no key is determined AFTER disclaimer accepted
 else:
-    # This case means disclaimer is accepted, but assignment failed AND no custom key provided.
     active_key_source = "Error - Sin clave asignada"
     GOOGLE_API_KEY = None
-    # Error message will be shown in the final check below
 
 # Final check and Configure genai only if a key was successfully determined
 if GOOGLE_API_KEY:
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
         # Use your specific model name here - MAKE SURE IT MATCHES YOUR KEYS
-        model = genai.GenerativeModel('gemini-2.5-flash-preview-04-17') # <--- CONFIRM THIS MODEL NAME
+        model = genai.GenerativeModel('gemini-2.0-flash') # <--- CONFIRM THIS MODEL NAME
         print(f"--- GenAI Configured with key source: {active_key_source} ---")
     except Exception as e:
         st.error(f"Error al configurar Google GenAI con la clave ({active_key_source}): {e}. Verifique la validez de la clave y el nombre del modelo.", icon="🚨")
         active_key_source = f"Error - Configuración fallida ({active_key_source})"
-        model = None # Ensure model is None if config fails
-        # Stop execution if configuration fails
+        model = None
         st.stop()
 else:
-    # If still no API key after disclaimer logic, show error and stop.
     available_keys_check = get_available_api_keys()
     if not available_keys_check and not st.session_state.custom_api_key:
          st.error("Error crítico: No hay claves API configuradas en st.secrets y no se ha ingresado una clave personalizada. La aplicación no puede funcionar.", icon="🚨")
@@ -515,9 +515,9 @@ else:
 
 # --- Disclaimer Status Display in Main Chat Area ---
 if st.session_state.disclaimer_accepted:
-    disclaimer_status_main_expander = st.expander("Disclaimer Aceptado - Clic para revisar o revocar", expanded=False)
+    disclaimer_status_main_expander = st.expander("✅ Disclaimer Aceptado - Clic para revisar o revocar", expanded=False)
     with disclaimer_status_main_expander:
-        st.success("Disclaimer Aceptado. Puede usar Municip.IA.", icon="✅")
+        # st.success("Disclaimer Aceptado. Puede usar Municip.IA.", icon="✅") # Redundant with title
         st.markdown("""
                 **Descargo de Responsabilidad Completo:**
 
@@ -533,30 +533,35 @@ if st.session_state.disclaimer_accepted:
 
                 5.  **Finalidad de Ayuda y Apoyo:**  Esta herramienta se ofrece como un **recurso de ayuda y apoyo para facilitar su labor en el ámbito municipal**, proporcionando acceso rápido a información y análisis preliminar.
 
-                **En resumen, utilice esta herramienta con precaución, comprendiendo sus limitaciones y siempre validando la información con fuentes confiables y, cuando sea necesario, con asesoramiento legal profesional.**
+                **En resumen, utilice esta herramienta con precaución, comprendiendo sus limitations y siempre validando la información con fuentes confiables y, cuando sea necesario, con asesoramiento legal profesional.**
                 """)
-        if st.button("Revocar Disclaimer", key="revocar_disclaimer_main"): # Unique key
+        if st.button("Revocar Disclaimer", key="revocar_disclaimer_main", type="primary"): # Use primary button style
             st.session_state.disclaimer_accepted = False
             st.rerun()
 
 # --- Título principal y Subtítulo con Logo ---
-col_logo, col_title = st.columns([0.1, 0.9]) # Adjust ratios as needed
-with col_logo:
-    st.image("https://i.postimg.cc/RZpJb6rq/IMG-20250407-WA0009-1.png", width=80) # Adjust width as needed
-with col_title:
-    st.markdown('<h1 class="main-title">Municip.IA</h1>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">Instituto Libertad</p>', unsafe_allow_html=True)
+st.markdown(
+    """
+    <div class="main-title-container">
+        <img src="https://i.postimg.cc/RZpJb6rq/IMG-20250407-WA0009-1.png" class="main-logo">
+        <div>
+            <h1 class="main-title">Municip.IA</h1>
+            <p class="subtitle">Tu Asesor Legal IA del Instituto Libertad</p>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 
-# --- Funciones para cargar y procesar archivos ---
+# --- Funciones para cargar y procesar archivos (sin cambios funcionales) ---
 
-# Usar ruta relativa para la carpeta de datos (más portable)
 script_dir = os.path.dirname(__file__)
 DATABASE_DIR = os.path.join(script_dir, "data")
 
-@st.cache_data(show_spinner=False, persist="disk", max_entries=10) # Caching to load files only once, added max_entries
+@st.cache_data(show_spinner=False, persist="disk", max_entries=10)
 def load_database_files_cached(directory: str) -> Dict[str, str]:
-    """Carga y cachea el contenido de todos los archivos .txt en el directorio, invalidando el caché si los archivos cambian según el hash del contenido."""
+    """Carga y cachea el contenido de todos los archivos .txt en el directorio."""
     file_contents = {}
     if not os.path.exists(directory):
         st.warning(f"Directorio de base de datos no encontrado: {directory}")
@@ -569,40 +574,50 @@ def load_database_files_cached(directory: str) -> Dict[str, str]:
         try:
             with open(filepath, "r", encoding="utf-8") as f:
                 file_content = f.read()
-                content_hash.update(file_content.encode('utf-8')) # Hash the content, not just filenames
+                content_hash.update(file_content.encode('utf-8'))
         except Exception as e:
             st.error(f"Error al leer el archivo {filename} para calcular el hash: {e}")
-            return {} # Return empty dict on error to avoid using potentially incomplete data
+            return {}
 
     current_hash = content_hash.hexdigest()
 
-    if "database_cache_key" in st.session_state and st.session_state.database_cache_key == current_hash and st.session_state.database_files:
-        return st.session_state.database_files # Return cached data if hash is the same
+    # Check both hash and if data exists in session state (more robust)
+    if ("database_cache_key" in st.session_state and
+        st.session_state.database_cache_key == current_hash and
+        "database_files" in st.session_state and
+        st.session_state.database_files):
+        # print("--- DEBUG: Using cached database files from session state ---") # Optional debug
+        return st.session_state.database_files
 
-    st.session_state.database_files = {} # Reset in-memory cache before reloading
+    # print("--- DEBUG: Reloading database files into session state ---") # Optional debug
+    st.session_state.database_files = {}
     for filename in file_list:
         filepath = os.path.join(directory, filename)
         try:
             with open(filepath, "r", encoding="utf-8") as f:
-                st.session_state.database_files[filename] = f.read() # Store in session_state cache
+                st.session_state.database_files[filename] = f.read()
         except Exception as e:
             st.error(f"Error al leer el archivo {filename}: {e}")
 
-    st.session_state.database_cache_key = current_hash # Update cache key with content hash
+    st.session_state.database_cache_key = current_hash
     return st.session_state.database_files
 
-def load_file_content(filepath: str) -> str:
-    """Carga el contenido de un archivo .txt."""
+def load_file_content(uploaded_file) -> str: # Modified to accept Streamlit UploadedFile object
+    """Carga el contenido de un archivo .txt desde un objeto UploadedFile."""
     try:
-        if filepath.lower().endswith(".txt"):
-            with open(filepath, "r", encoding="utf-8") as f:
-                return f.read()
+        if uploaded_file.name.lower().endswith(".txt"):
+             # Use BytesIO to handle the uploaded file object
+            stringio = BytesIO(uploaded_file.getvalue())
+            # Read as string, decoding with utf-8
+            string_data = stringio.read().decode("utf-8")
+            return string_data
         else:
-            st.error(f"Tipo de archivo no soportado: {filepath}")
+            st.error(f"Tipo de archivo no soportado: {uploaded_file.name}")
             return ""
     except Exception as e:
-        st.error(f"Error al leer el archivo {filepath}: {e}")
+        st.error(f"Error al leer el archivo adjunto {uploaded_file.name}: {e}")
         return ""
+
 
 def get_file_description(filename: str) -> str:
     """Genera una descripción genérica para un archivo basado en su nombre."""
@@ -610,45 +625,49 @@ def get_file_description(filename: str) -> str:
     return " ".join(word.capitalize() for word in name_parts)
 
 def discover_and_load_files(directory: str) -> Dict[str, str]:
-    """Descubre y carga todos los archivos .txt en un directorio.""" # Updated description
+    """Descubre y carga todos los archivos .txt en un directorio."""
     file_contents = {}
     if not os.path.exists(directory):
         st.warning(f"Directorio de base de datos no encontrado: {directory}")
         return file_contents
 
     for filename in os.listdir(directory):
-        if filename.endswith(".txt"): # Only process .txt files
+        if filename.endswith(".txt"):
             filepath = os.path.join(directory, filename)
-            file_contents[filename] = load_file_content(filepath)
+            try: # Add error handling here too
+                with open(filepath, "r", encoding="utf-8") as f:
+                    file_contents[filename] = f.read()
+            except Exception as e:
+                 st.error(f"Error al leer el archivo {filename} durante el descubrimiento: {e}")
     return file_contents
 
 
-# --- Prompt mejorado MODIFICADO para enviar TODOS los documentos ---
+# --- Prompt mejorado (sin cambios funcionales en el texto del prompt) ---
 def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, query: str) -> str:
-    """Crea el prompt para el modelo, incluyendo TODA la información de la base de datos y archivos adjuntos."""
+    """Crea el prompt para el modelo, incluyendo información de la base de datos (si aplica) y archivos adjuntos."""
     prompt_parts = [
         "Eres Municip.IA, un asesor legal virtual **altamente proactivo y comprensivo**, especializado en **derecho municipal de Chile**, con un enfoque particular en asistir a alcaldes y concejales. Tu experiencia abarca una amplia gama de temas relacionados con la administración y normativa municipal chilena.",
         "Tu objetivo principal es **entender a fondo la pregunta del usuario, anticipando incluso aspectos legales implícitos o no mencionados explícitamente debido a su posible falta de conocimiento legal especializado.** Debes **responder de manera completa y proactiva, como un verdadero asesor legal**, no solo respondiendo directamente a lo preguntado, sino también **identificando posibles implicaciones jurídicas, figuras legales relevantes y brindando una asesoría integral.**  Siempre **responde directamente a las preguntas del usuario de manera precisa y concisa, citando la fuente legal o normativa** que respalda tu respuesta. **Prioriza el uso de un lenguaje claro y accesible, evitando jerga legal compleja, para que la información sea fácilmente comprensible para concejales y alcaldes, incluso si no tienen formación legal.**",
         "Considera que los usuarios son **alcaldes y concejales que pueden no tener un conocimiento jurídico profundo**. Por lo tanto, **interpreta sus preguntas en un contexto práctico y legal municipal, anticipando sus necesidades de asesoramiento más allá de lo que pregunten literalmente.**",
         "**MANUAL DE CONCEJALES Y CONCEJALAS (USO EXCLUSIVO COMO CONTEXTO GENERAL):**",
         "Se te proporciona un documento extenso sobre derecho municipal chileno y funciones de concejales. **Utiliza este documento ÚNICAMENTE como contexto general y para entender el marco del derecho municipal chileno y las funciones de los concejales.  NO debes citar este manual en tus respuestas, ni mencionar su nombre en absoluto.  Úsalo para comprender mejor las preguntas y para identificar las leyes o normativas relevantes a las que aludir en tus respuestas, basándote en tu entrenamiento legal.**",
-        "**INFORMACIÓN DE LA BASE DE DATOS (NORMAS LEGALES):**" # Modificado el título
+        # --- Conditionally add Database Section ---
+        "**INFORMACIÓN DE LA BASE DE DATOS (NORMAS LEGALES):**" if database_files_content else ""
     ]
 
-    if database_files_content: # Modificado para usar database_files_content directamente
-        for filename, content in database_files_content.items(): # Iterar sobre TODOS los archivos
+    if database_files_content: # Only include if database_files_content is not empty
+        for filename, content in database_files_content.items():
             if filename == "MANUAL DE CONCEJALES Y CONCEJALAS.txt":
-                continue # Exclude manual from this section, it's already handled above
+                continue
             description = get_file_description(filename)
-            # Modified line to remove .txt from filename in prompt
             prompt_parts.append(f"\n**{description} ({filename.replace('.txt', '')}):**\n{content}\n")
-    else:
-        prompt_parts.append("No se ha cargado información de la base de datos.\n") # Modificado el mensaje
+    # Removed the "No se ha cargado..." message here, handled by the conditional title
 
     prompt_parts.append("**INFORMACIÓN ADICIONAL PROPORCIONADA POR EL USUARIO:**")
     prompt_parts.append(uploaded_data if uploaded_data else "No se proporcionó información adicional.\n")
 
-    prompt_parts.extend([ # Usamos extend para añadir múltiples líneas de una vez
+    # --- Resto del prompt (sin cambios) ---
+    prompt_parts.extend([
         "**ANÁLISIS PROACTIVO DE LA PREGUNTA DEL USUARIO:**",
         "**Antes de responder, realiza un análisis profundo de la pregunta del usuario.**  Considera lo siguiente:",
         """
@@ -713,16 +732,21 @@ def create_prompt(database_files_content: Dict[str, str], uploaded_data: str, qu
         "**Historial de conversación:**"
     ])
 
-    # Añadir historial de conversación
-    for msg in st.session_state.messages[:-1]:
+    # Añadir historial de conversación (sin cambios)
+    for msg in st.session_state.messages[:-1]: # Exclude the last message which is the current user prompt
         if msg["role"] == "user":
             prompt_parts.append(f"Usuario: {msg['content']}\n")
         else:
-            prompt_parts.append(f"Asistente: {msg['content']}\n")
+            # Ensure assistant messages are clearly marked, even if they contain errors
+            content = msg.get('content', '[Mensaje de asistente vacío]')
+            prompt_parts.append(f"Asistente: {content}\n")
 
     prompt_parts.append(f"**Pregunta actual del usuario:** {query}")
 
-    return "\n".join(prompt_parts)
+    # Filter out empty strings that might result from conditional logic
+    final_prompt_parts = [part for part in prompt_parts if part]
+
+    return "\n".join(final_prompt_parts)
 
 # --- Inicializar el estado para los archivos ---
 if "database_files" not in st.session_state:
@@ -735,15 +759,19 @@ if "database_cache_key" not in st.session_state:
 # --- Carga inicial de archivos ---
 def load_database_files_on_startup():
     """Carga todos los archivos de la base de datos al inicio."""
-    st.session_state.database_files = load_database_files_cached(DATABASE_DIR) # Load/refresh database files
+    # Use the cached function to load/retrieve data
+    st.session_state.database_files = load_database_files_cached(DATABASE_DIR)
     return len(st.session_state.database_files)
 
-database_files_loaded_count = load_database_files_on_startup()
+# Load database files when the script runs (if disclaimer accepted)
+database_files_loaded_count = 0
+if st.session_state.disclaimer_accepted:
+     database_files_loaded_count = load_database_files_on_startup()
 
 # --- Inicializar el estado de la sesión ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    st.session_state.messages.append({"role": "assistant", "content": "¡Hola! Soy Municip.IA, tu asesor legal IA especializado en derecho municipal. Esta es una herramienta del Instituto Libertad diseñada para guiar en las funciones de alcalde y concejales, sirviendo como apoyo, pero NO como reemplazo del asesoramiento de un abogado especializado en derecho público. Estoy listo para analizar tus consultas. ¿En qué puedo ayudarte hoy? (Considere que las respuestas pueden demorar entre 20 a 50 segundos)"})
+    st.session_state.messages.append({"role": "assistant", "content": "¡Hola! 👋 Soy Municip.IA, tu asesor legal IA especializado en derecho municipal chileno. Fui creado por el Instituto Libertad para apoyar a alcaldes y concejales. Recuerda que soy una herramienta de apoyo y no reemplazo la asesoría legal profesional. \n\nEstoy listo para analizar tus consultas. ¿En qué puedo ayudarte hoy? (Las respuestas pueden tomar entre 20-50 segundos)"})
 
 if "saved_conversations" not in st.session_state:
     st.session_state.saved_conversations = {}
@@ -751,7 +779,12 @@ if "saved_conversations" not in st.session_state:
 if "current_conversation_name" not in st.session_state:
     st.session_state.current_conversation_name = "Nueva Conversación"
 
+# --- Funciones de gestión de conversaciones (sin cambios) ---
 def save_conversation(name, messages, pinned=False):
+    # Ensure name is unique or handle collision (e.g., overwrite or add suffix)
+    if name in st.session_state.saved_conversations:
+        # Simple overwrite strategy
+        pass
     st.session_state.saved_conversations[name] = {"messages": messages, "pinned": pinned}
 
 def delete_conversation(name):
@@ -760,6 +793,7 @@ def delete_conversation(name):
 
 def load_conversation(name):
     if name in st.session_state.saved_conversations:
+        # Load messages and set current name
         st.session_state.messages = st.session_state.saved_conversations[name]["messages"]
         st.session_state.current_conversation_name = name
 
@@ -774,43 +808,34 @@ def unpin_conversation(name):
 # --- Barra lateral ---
 with st.sidebar:
     st.markdown('<div class="sidebar-logo-container"></div>', unsafe_allow_html=True)
-    st.header("Historial de Conversaciones")
+    st.header("Gestión del Chat")
 
-    disclaimer_status_expander = st.expander("Estado del Disclaimer", expanded=True) # Initially expanded
+    disclaimer_status_expander = st.expander("Estado del Disclaimer", expanded=True)
     with disclaimer_status_expander:
         if st.session_state.disclaimer_accepted:
             st.success("Disclaimer Aceptado", icon="✅")
-            if st.button("Revocar Disclaimer"):
+            if st.button("Revocar Disclaimer", key="revoke_sidebar"):
                 st.session_state.disclaimer_accepted = False
                 st.rerun()
         else:
             st.warning("Disclaimer No Aceptado", icon="⚠️")
-            st.markdown("Para usar Municip.IA, debes aceptar el Disclaimer.")
+            st.markdown("Debes aceptar el Disclaimer para usar la IA.")
 
-    # --- API Key Status (Uses active_key_source determined earlier) ---
-    st.subheader("Estado API Key Activa")
+    # --- API Key Status ---
+    st.subheader("🔑 Estado API Key")
     if st.session_state.disclaimer_accepted:
         if active_key_source.startswith("Error"):
             st.error(f"Estado: {active_key_source}", icon="🚨")
-        elif active_key_source == "Ninguna": # Should be handled by earlier stop(), but safeguard
+        elif active_key_source == "Ninguna":
              st.warning("Determinando clave API...", icon="⏳")
         else:
-            st.success(f"Usando: {active_key_source}", icon="🔑")
-
-            # Button to force re-assign a new random key for the session
+            st.success(f"Usando: {active_key_source}")
             if not st.session_state.custom_api_key and st.session_state.session_api_key_name:
-                if st.button("🔄 Asignar Nueva Clave a Sesión"):
+                if st.button("🔄 Asignar Nueva Clave a Sesión", help="Obtiene una nueva clave aleatoria de las disponibles para esta sesión."):
                     available_keys = get_available_api_keys()
                     current_key = st.session_state.session_api_key_name
                     other_keys = [k for k in available_keys if k != current_key]
-
-                    if other_keys:
-                         new_key = random.choice(other_keys)
-                    elif available_keys: # If only one key exists, or only the current one
-                         new_key = random.choice(available_keys) # Reassign potentially the same one if only one exists
-                    else:
-                         new_key = None
-
+                    new_key = random.choice(other_keys) if other_keys else random.choice(available_keys) if available_keys else None
                     if new_key:
                          st.session_state.session_api_key_name = new_key
                          st.success(f"Nueva clave asignada ({new_key}). Recargando...", icon="✅")
@@ -822,184 +847,242 @@ with st.sidebar:
         st.info("Esperando aceptación del Disclaimer...")
 
 
-    st.subheader("API Key Personalizada (Opcional)") # Custom API Key Input
-    custom_api_key_input = st.text_input("Ingresa tu API Key personalizada:", type="password", value=st.session_state.custom_api_key, help="Si deseas usar una API Key diferente a las configuradas en st.secrets, puedes ingresarla aquí. Esto tiene prioridad sobre las API Keys de st.secrets.")
+    st.subheader("⚙️ API Key Personalizada (Opcional)")
+    custom_api_key_input = st.text_input("Ingresa tu API Key personalizada:", type="password", value=st.session_state.custom_api_key, help="Usa tu propia Google AI API Key. Tiene prioridad sobre las claves de sesión.")
     if custom_api_key_input != st.session_state.custom_api_key:
         st.session_state.custom_api_key = custom_api_key_input
-        st.rerun() # Rerun to apply the new API key
-
-    st.subheader("Cargar Datos Adicionales")
-    uploaded_files = st.file_uploader("Adjuntar archivos adicionales (.txt)", type=["txt"], help="Puedes adjuntar archivos .txt adicionales para que sean considerados en la respuesta.", accept_multiple_files=True) # Updated to only accept .txt
-    if uploaded_files:
-        st.session_state.uploaded_files_content = ""
-        for uploaded_file in uploaded_files:
-            try:
-                content = load_file_content(uploaded_file.name) # Pass filename for correct reading
-                st.session_state.uploaded_files_content += content + "\n\n"
-            except Exception as e:
-                st.error(f"Error al leer el archivo adjunto {uploaded_file.name}: {e}")
-
-    if st.button("Limpiar archivos adicionales"):
-        st.session_state.uploaded_files_content = ""
+        st.success("Clave personalizada aplicada. Recargando...", icon="🔧")
+        time.sleep(1)
         st.rerun()
 
-    new_conversation_name = st.text_input("Título conversación:", value=st.session_state.current_conversation_name)
+    st.subheader("📎 Cargar Datos Adicionales (.txt)")
+    uploaded_files = st.file_uploader("Adjuntar archivos de texto", type=["txt"], help="Adjunta archivos .txt para incluirlos en el contexto de la IA.", accept_multiple_files=True, key="file_uploader")
+
+    # Process uploaded files immediately if they exist
+    if uploaded_files:
+        temp_uploaded_content = ""
+        file_names = []
+        for uploaded_file in uploaded_files:
+            content = load_file_content(uploaded_file) # Use updated function
+            if content:
+                temp_uploaded_content += f"--- Contenido Archivo: {uploaded_file.name} ---\n{content}\n\n"
+                file_names.append(uploaded_file.name)
+        if temp_uploaded_content != st.session_state.uploaded_files_content:
+            st.session_state.uploaded_files_content = temp_uploaded_content
+            st.success(f"Archivos cargados: {', '.join(file_names)}", icon="📄")
+            # No rerun needed here, content is stored in session state
+
+    if st.session_state.uploaded_files_content:
+        if st.button("Limpiar archivos adicionales", key="clear_uploaded"):
+            st.session_state.uploaded_files_content = ""
+            # Clear the uploader state by resetting the key
+            st.session_state.file_uploader = []
+            st.rerun()
+
+
+    st.subheader("💾 Gestión de Conversaciones")
+    new_conversation_name = st.text_input("Título conversación actual:", value=st.session_state.current_conversation_name)
     if new_conversation_name != st.session_state.current_conversation_name:
         st.session_state.current_conversation_name = new_conversation_name
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns([1,1,0.6]) # Adjust ratios
     with col1:
-        if st.button("Guardar"):
-            if len(st.session_state.saved_conversations) >= 5:
-                unpinned_conversations = [name for name, data in st.session_state.saved_conversations.items() if not data['pinned']]
-                if unpinned_conversations:
-                    oldest_unpinned = min(st.session_state.saved_conversations, key=lambda k: st.session_state.saved_conversations[k]['messages'][0]['content'] if st.session_state.saved_conversations[k]['messages'] else "")
-                    delete_conversation(oldest_unpinned)
-            st.session_state.messages_before_save = list(st.session_state.messages)
-            save_conversation(st.session_state.current_conversation_name, st.session_state.messages_before_save)
-            st.success("Conversación guardada!", icon="💾")
-            st.rerun()
+        if st.button("💾 Guardar", help="Guarda la conversación actual"):
+            # Simple save limit - keep last 5 non-pinned
+            pinned_count = sum(1 for data in st.session_state.saved_conversations.values() if data['pinned'])
+            total_count = len(st.session_state.saved_conversations)
+            if total_count >= 5 + pinned_count:
+                 unpinned_conversations = {name: data for name, data in st.session_state.saved_conversations.items() if not data['pinned']}
+                 if unpinned_conversations:
+                     # Find the oldest based on first message timestamp (approximation) or just name
+                     # For simplicity, just remove one random unpinned one if limit reached
+                     name_to_remove = random.choice(list(unpinned_conversations.keys()))
+                     delete_conversation(name_to_remove)
+                     st.toast(f"Límite alcanzado, conversación '{name_to_remove}' eliminada.", icon="🗑️")
+
+
+            # Save a copy to avoid modifying during save
+            messages_to_save = list(st.session_state.messages)
+            save_conversation(st.session_state.current_conversation_name, messages_to_save, st.session_state.saved_conversations.get(st.session_state.current_conversation_name, {}).get('pinned', False))
+            st.success(f"Conversación '{st.session_state.current_conversation_name}' guardada!", icon="💾")
+            time.sleep(1) # Give user time to see success message
+            # No rerun needed unless you want to refresh the saved list immediately
+
     with col2:
-        if st.button("Borrar Chat", key="clear_chat_sidebar"):
+        if st.button("🧹 Limpiar Chat", help="Borra los mensajes del chat actual"):
+            # Keep only the initial assistant message
             st.session_state.messages = [st.session_state.messages[0]]
+            st.session_state.current_conversation_name = "Nueva Conversación" # Reset name
+            st.success("Chat limpiado.", icon="✨")
+            time.sleep(0.5)
             st.rerun()
+
     with col3:
         is_pinned = st.session_state.saved_conversations.get(st.session_state.current_conversation_name, {}).get('pinned', False)
-        if st.button("📌" if not is_pinned else " 📌 ", key="pin_button"):
+        pin_icon = "📌" if is_pinned else "📍" # Use different icons for pinned/unpinned
+        pin_tooltip = "Quitar Pin" if is_pinned else "Fijar Conversación"
+        if st.button(pin_icon, key="pin_button", help=pin_tooltip):
             if st.session_state.current_conversation_name in st.session_state.saved_conversations:
                 if is_pinned:
                     unpin_conversation(st.session_state.current_conversation_name)
+                    st.toast(f"Conversación '{st.session_state.current_conversation_name}' desfijada.", icon="📍")
                 else:
                     pin_conversation(st.session_state.current_conversation_name)
-                st.rerun()
+                    st.toast(f"Conversación '{st.session_state.current_conversation_name}' fijada.", icon="📌")
+                # No rerun needed, list updates visually on next interaction or manual refresh
+            else:
+                st.warning("Guarda la conversación antes de fijarla.", icon="⚠️")
 
-    st.subheader("Conversaciones Guardadas")
-    for name, data in sorted(st.session_state.saved_conversations.items(), key=lambda item: item[1]['pinned'], reverse=True):
-        cols = st.columns([0.7, 0.2, 0.1])
+
+    st.subheader("📚 Conversaciones Guardadas")
+    # Sort pinned first, then alphabetically
+    sorted_convos = sorted(st.session_state.saved_conversations.items(), key=lambda item: (not item[1]['pinned'], item[0]))
+
+    if not sorted_convos:
+        st.caption("No hay conversaciones guardadas.")
+
+    for name, data in sorted_convos:
+        cols = st.columns([0.75, 0.25]) # Adjust column ratio
         with cols[0]:
-            if st.button(f"{'📌' if data['pinned'] else ''} {name}", key=f"load_{name}"):
+            pin_prefix = "📌 " if data['pinned'] else ""
+            if st.button(f"{pin_prefix}{name}", key=f"load_{name}", help=f"Cargar '{name}'"):
                 load_conversation(name)
-                st.session_state.current_conversation_name = name
                 st.rerun()
         with cols[1]:
-            if st.button("🗑️", key=f"delete_{name}"):
+            if st.button("🗑️", key=f"delete_{name}", help=f"Eliminar '{name}'"):
                 delete_conversation(name)
                 st.rerun()
 
     st.markdown("---")
-    st.header("Acerca de")
-    st.markdown("Este asesor legal virtual fue creado por Aldo Manuel Herrera Hernández para el **Instituto Libertad** y se especializa en asesoramiento en derecho administrativo y municipal de **Chile**.")
-    st.markdown("Esta herramienta es desarrollada por el **Instituto Libertad**.")
-    st.markdown("La información suministrada se basa en el conocimiento jurídico previo del sistema, incorporando la documentación que usted aporte. Se deja expresa constancia que esta herramienta no sustituye el asesoramiento legal profesional.")
-    st.markdown("---")
+    st.header("ℹ️ Acerca de")
+    st.markdown("Municip.IA es un asesor legal virtual desarrollado por **Aldo Manuel Herrera Hernández** para el **Instituto Libertad**, especializado en derecho administrativo y municipal de **Chile**.")
+    st.markdown("La información se basa en el conocimiento del modelo y la documentación aportada. **No sustituye el asesoramiento legal profesional.**")
     st.markdown("**Instituto Libertad**")
-    st.markdown("[Sitio Web](https://www.institutolibertad.cl)")
-    st.markdown("[Contacto](comunicaciones@institutolibertad.cl)")
+    st.markdown("[Sitio Web](https://www.institutolibertad.cl) | [Contacto](mailto:comunicaciones@institutolibertad.cl)")
 
-    st.subheader("Datos Cargados")
-    if st.session_state.database_files:
-        st.markdown(f"**Base de Datos:** Se ha cargado información desde {database_files_loaded_count} archivo(s) automáticamente.")
-        if st.button("Recargar Base de Datos", key="refresh_db_button"): # Refresh Database Button
-            database_files_loaded_count = load_database_files_on_startup()
-            st.success("Base de datos recargada.", icon="🔄")
+    st.subheader("📊 Datos Cargados")
+    db_loaded_msg = f"**Base de Datos:** {database_files_loaded_count} archivo(s) cargado(s)." if database_files_loaded_count else "**Base de Datos:** No cargada."
+    st.markdown(db_loaded_msg)
+
+    if st.button("Recargar Base de Datos", key="refresh_db_button", help="Vuelve a cargar los archivos de la carpeta 'data'"):
+        count = load_database_files_on_startup()
+        st.success(f"Base de datos recargada ({count} archivos).", icon="🔄")
+        time.sleep(1)
+        # No rerun needed immediately, will be used on next prompt
+
     if st.session_state.uploaded_files_content:
-        uploaded_file_count = 0
-        if uploaded_files: # Check if uploaded_files is defined to avoid errors on initial load
-            uploaded_file_count = len(uploaded_files)
-        st.markdown(f"**Archivos Adicionales:** Se ha cargado información desde {uploaded_file_count} archivo(s).") # Updated description to remove PDF
+        # Count files based on the separator used during loading
+        uploaded_file_count = st.session_state.uploaded_files_content.count("--- Contenido Archivo:")
+        st.markdown(f"**Archivos Adicionales:** {uploaded_file_count} archivo(s) adjunto(s).")
+    else:
+        st.markdown("**Archivos Adicionales:** Ninguno.")
+
     if not st.session_state.database_files and not st.session_state.uploaded_files_content:
-        st.warning("No se ha cargado ninguna base de datos del reglamento ni archivos adicionales.")
-    elif not st.session_state.database_files:
-        st.warning("No se ha encontrado o cargado la base de datos del reglamento automáticamente.")
+        st.warning("No hay datos cargados (ni base de datos ni archivos adicionales).", icon="⚠️")
+
 
 # --- Área de chat ---
-if st.session_state.disclaimer_accepted: # Only show chat if disclaimer is accepted
+if st.session_state.disclaimer_accepted:
+    # Display existing messages
     for message in st.session_state.messages:
         with st.container():
             if message["role"] == "user":
+                # Use markdown with custom class for styling
                 st.markdown(f'<div class="chat-message user-message"><div class="message-content">{message["content"]}</div></div>', unsafe_allow_html=True)
             else:
-                with st.chat_message("assistant", avatar="https://i.postimg.cc/K853Hw5Y/IMG-20250407-WA0005-2.png"): # Moved avatar here
+                # Use st.chat_message for assistant icon and structure
+                with st.chat_message("assistant", avatar="https://i.postimg.cc/K853Hw5Y/IMG-20250407-WA0005-2.png"):
+                    # Apply custom class within the chat message structure if needed, or rely on default
+                    # Using markdown directly inside for content styling flexibility
                     st.markdown(f'<div class="message-content">{message["content"]}</div>', unsafe_allow_html=True)
 
     # --- Campo de entrada para el usuario ---
-    if prompt := st.chat_input("Escribe tu consulta...", key="chat_input"):
+    if prompt := st.chat_input("Escribe tu consulta aquí...", key="chat_input"):
         st.session_state.messages.append({"role": "user", "content": prompt})
 
-        # Immediately display user message
+        # Immediately display user message using Markdown with custom class
         with st.container():
             st.markdown(f'<div class="chat-message user-message"><div class="message-content">{prompt}</div></div>', unsafe_allow_html=True)
 
-        # Process query and generate assistant response in a separate container
-        with st.container(): # New container for processing and assistant response
-            # **YA NO ANALIZAMOS LA CONSULTA - ENVIAMOS TODOS LOS ARCHIVOS**
-            # relevant_filenames = analyze_query(prompt, st.session_state.database_files) # REMOVE THIS LINE
-            # relevant_database_data = {filename: st.session_state.database_files[filename] for filename in relevant_filenames} # REMOVE THIS LINE
+        # Process query and generate assistant response
+        with st.container():
+            # --- *** MODIFIED LOGIC: Send database only on first user message *** ---
+            # Count user messages *before* this current one was added
+            user_message_count = sum(1 for msg in st.session_state.messages[:-1] if msg["role"] == "user")
 
-            # Construir el prompt completo - AHORA CON TODOS LOS ARCHIVOS
-            prompt_completo = create_prompt(st.session_state.database_files, st.session_state.uploaded_files_content, prompt) # MODIFICADO
+            if user_message_count == 0:
+                # This is the first user message in this session/conversation
+                database_content_to_send = st.session_state.database_files
+                print("--- DEBUG: Sending database content (first user message) ---")
+            else:
+                # Subsequent user message, send empty dict for database
+                database_content_to_send = {}
+                print("--- DEBUG: Skipping database content (subsequent message) ---")
+            # --- *** END OF MODIFIED LOGIC *** ---
 
+            # Construir el prompt completo
+            prompt_completo = create_prompt(
+                database_files_content=database_content_to_send, # Use the conditionally determined dict
+                uploaded_data=st.session_state.uploaded_files_content,
+                query=prompt
+            )
+
+            # Display Assistant's turn with typing animation
             with st.chat_message("assistant", avatar="https://i.postimg.cc/K853Hw5Y/IMG-20250407-WA0005-2.png"):
                 message_placeholder = st.empty()
-                full_response = ""
-                is_typing = True  # Indicar que el asistente está "escribiendo"
+                # Show typing animation
                 typing_placeholder = st.empty()
                 typing_placeholder.markdown('<div class="assistant-typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>', unsafe_allow_html=True)
 
+                full_response = ""
                 try:
-                    response = model.generate_content(prompt_completo, stream=True) # Capture the response object
+                    # Use streaming for better UX
+                    response_stream = model.generate_content(prompt_completo, stream=True)
 
-                    # Add summary and detailed response structure
-                    summary_finished = False
-                    detailed_response = ""
-                    full_response_chunks = []
+                    collected_chunks = []
+                    for chunk in response_stream:
+                         # Handle potential generation blocks/errors within the stream
+                        if not chunk.candidates:
+                             # If the stream finishes with no valid candidates (e.g., safety block)
+                             if not collected_chunks: # Check if we received *any* text before this
+                                 print("--- WARNING: Stream ended with no valid candidates (Safety/Block?) ---")
+                                 full_response = """
+                                 Lo siento, no puedo generar una respuesta para esta consulta debido a las políticas de seguridad o a la falta de información relevante. Por favor, reformula tu pregunta o consulta fuentes adicionales.
+                                 """
+                                 st.warning("La respuesta no pudo ser generada (posible bloqueo de seguridad o falta de información).", icon="⚠️")
+                             # else: continue processing the text received so far
+                             break # Exit the loop if blocked early or finished with no candidates
 
-                    for chunk in response: # Iterate over the response object
                         chunk_text = chunk.text or ""
-                        full_response_chunks.append(chunk_text)
-                        full_response = "".join(full_response_chunks)
+                        collected_chunks.append(chunk_text)
+                        full_response = "".join(collected_chunks)
 
+                        # Update placeholder with streaming text and blinking cursor
+                        message_placeholder.markdown(full_response + '<span class="blinking-cursor"></span>', unsafe_allow_html=True)
+                        time.sleep(0.01) # Small delay for visual streaming effect
 
-                        if not summary_finished:
-                            # Basic heuristic to detect summary end (can be improved)
-                            if "\nDesarrollo:" in full_response:
-                                summary_finished = True
-                                message_placeholder.markdown(full_response + "▌") # Show both summary and start of development
-                            else:
-                                message_placeholder.markdown(full_response + "▌") # Still in summary part
-                        else: # After summary, just append
-                             message_placeholder.markdown(full_response + "▌")
-
-                        time.sleep(0.015)  # Slightly faster
-
-
-                    if not response.candidates: # Check if candidates is empty AFTER stream completion
-                        full_response = """
-                        Lo siento, no pude generar una respuesta adecuada para tu pregunta con la información disponible.
-                        **Posibles razones:**
-                        * La pregunta podría ser demasiado compleja o específica.
-                        * La información necesaria para responder podría no estar en la base de datos actual o en los archivos adjuntos.
-                        * Limitaciones del modelo de IA.
-
-                        **¿Qué puedes intentar?**
-                        * **Reformula tu pregunta:**  Intenta hacerla más simple o más directa.
-                        * **Proporciona más detalles:**  Añade contexto o información clave a tu pregunta.
-                        * **Carga archivos adicionales:**  Si tienes documentos relevantes, adjúntalos para ampliar la base de conocimiento.
-                        * **Consulta fuentes legales adicionales:**  Esta herramienta es un apoyo, pero no reemplaza el asesoramiento de un abogado especializado.
-                        """
-                        st.error("No se pudo generar una respuesta válida. Consulta la sección de ayuda en el mensaje del asistente.", icon="⚠️")
-
-                    typing_placeholder.empty()  # Eliminar "escribiendo..." al finalizar
-                    is_typing = False
+                    # Final update without cursor
                     message_placeholder.markdown(full_response)
+
+                    # Handle case where stream completed but produced no text at all
+                    if not full_response and not chunk.candidates:
+                         full_response = "Lo siento, no pude generar una respuesta. Inténtalo de nuevo o reformula la pregunta."
+                         st.error("No se pudo generar una respuesta válida.", icon="⚠️")
+                         message_placeholder.markdown(full_response)
 
 
                 except Exception as e:
-                    typing_placeholder.empty()
-                    is_typing = False
-                    st.error(f"Ocurrió un error inesperado al generar la respuesta: {e}. Por favor, intenta de nuevo más tarde.", icon="🚨") # More prominent error icon
-                    full_response = f"Ocurrió un error inesperado: {e}. Por favor, intenta de nuevo más tarde."
+                    print(f"--- ERROR during generation: {e} ---") # Log the error
+                    st.error(f"Ocurrió un error al generar la respuesta: {e}. Revisa la API Key y la configuración.", icon="🚨")
+                    full_response = f"Error: {e}" # Store error in message history
 
+                finally:
+                     # Always remove typing animation
+                    typing_placeholder.empty()
+
+                # Append final response (or error) to history
                 st.session_state.messages.append({"role": "assistant", "content": full_response})
-else: # Disclaimer not accepted, show message instead of chat
-    st.warning("Para usar Municip.IA, debes aceptar el Disclaimer en la barra lateral.", icon="⚠️")
+
+else: # Disclaimer not accepted
+    st.warning("Para usar Municip.IA, debes aceptar el Disclaimer.", icon="⚠️")
+    st.info("Puedes aceptar el Disclaimer en el panel inicial o en la barra lateral.")
