@@ -497,7 +497,7 @@ if GOOGLE_API_KEY:
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
         # Use your specific model name here - MAKE SURE IT MATCHES YOUR KEYS
-        model = genai.GenerativeModel('gemini-2.5-flash') # <--- CONFIRM THIS MODEL NAME
+        model = genai.GenerativeModel('gemini-2.0-flash') # <--- CONFIRM THIS MODEL NAME
         print(f"--- GenAI Configured with key source: {active_key_source} ---")
     except Exception as e:
         st.error(f"Error al configurar Google GenAI con la clave ({active_key_source}): {e}. Verifique la validez de la clave y el nombre del modelo.", icon="🚨")
