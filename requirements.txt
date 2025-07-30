@@ -6,3 +6,5 @@ pandas
 python-docx
 notion-client
 openpyxl
+gspread
+google-auth
