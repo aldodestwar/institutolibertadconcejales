@@ -16,7 +16,7 @@ from google.oauth2.service_account import Credentials
 # --- INICIO: NUEVA CONFIGURACIÓN DE LOGGING A GOOGLE SHEETS ---
 
 # El nombre de la hoja de cálculo que creaste en Google Drive
-GOOGLE_SHEET_NAME = "Registros Municip.IA" 
+GOOGLE_SHEET_NAME = "Registros Municip" 
 
 @st.cache_resource
 def get_gspread_client():
