@@ -7,7 +7,57 @@ from io import BytesIO
 from pathlib import Path
 from typing import List, Dict
 import hashlib
-import random # Import random module
+import random
+import datetime
+import uuid
+import gspread
+from google.oauth2.service_account import Credentials
+
+# --- INICIO: NUEVA CONFIGURACIÓN DE LOGGING A GOOGLE SHEETS ---
+
+# El nombre de la hoja de cálculo que creaste en Google Drive
+GOOGLE_SHEET_NAME = "Registros Municip.IA" 
+
+@st.cache_resource
+def get_gspread_client():
+    """Conecta con la API de Google Sheets usando las credenciales de st.secrets."""
+    try:
+        creds = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],
+            scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"],
+        )
+        client = gspread.authorize(creds)
+        print("--- Conexión con Google Sheets establecida ---")
+        return client
+    except Exception as e:
+        print(f"Error crítico al conectar con Google Sheets: {e}")
+        # Opcional: Mostrar un error en la UI si la conexión es vital
+        # st.error(f"No se pudo conectar al sistema de registro: {e}")
+        return None
+
+def log_to_google_sheet(session_id, role, content, api_source):
+    """Añade una nueva fila al registro en Google Sheets."""
+    client = get_gspread_client()
+    if not client:
+        print("--- Logging omitido: cliente de Google Sheets no disponible. ---")
+        return
+
+    try:
+        sheet = client.open(GOOGLE_SHEET_NAME).sheet1
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Columnas: SessionID, Timestamp, Role, Content, ApiKeySource
+        row_to_insert = [session_id, timestamp, role, content, api_source]
+        
+        sheet.append_row(row_to_insert, value_input_option='USER_ENTERED')
+        print(f"--- Logged to Google Sheet: Role={role} | Session={session_id[:8]} ---")
+    except gspread.exceptions.SpreadsheetNotFound:
+        print(f"ERROR: Hoja de cálculo '{GOOGLE_SHEET_NAME}' no encontrada. Verifica el nombre y los permisos de compartición.")
+    except Exception as e:
+        print(f"ERROR: No se pudo escribir en Google Sheets: {e}")
+
+# --- FIN: NUEVA CONFIGURACIÓN DE LOGGING A GOOGLE SHEETS ---
+
 
 # --- Password and Disclaimer State ---
 # Bypassing password for this version
@@ -23,6 +73,11 @@ if "custom_api_key" not in st.session_state:
 # --- Session state for the assigned API key name ---
 if "session_api_key_name" not in st.session_state:
     st.session_state.session_api_key_name = None
+
+# --- INICIO: NUEVO ID DE SESIÓN PARA LOGGING ---
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
+# --- FIN: NUEVO ID DE SESIÓN PARA LOGGING ---
 
 # --- Function to get available API keys ---
 def get_available_api_keys() -> List[str]:
@@ -497,7 +552,7 @@ if GOOGLE_API_KEY:
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
         # Use your specific model name here - MAKE SURE IT MATCHES YOUR KEYS
-        model = genai.GenerativeModel('gemini-2.0-flash') # <--- CONFIRM THIS MODEL NAME
+        model = genai.GenerativeModel('gemini-1.5-flash') # <--- CONFIRM THIS MODEL NAME
         print(f"--- GenAI Configured with key source: {active_key_source} ---")
     except Exception as e:
         st.error(f"Error al configurar Google GenAI con la clave ({active_key_source}): {e}. Verifique la validez de la clave y el nombre del modelo.", icon="🚨")
@@ -556,7 +611,7 @@ st.markdown(
 
 # --- Funciones para cargar y procesar archivos (sin cambios funcionales) ---
 
-script_dir = os.path.dirname(__file__)
+script_dir = os.path.dirname(__file__) if "__file__" in locals() else os.getcwd()
 DATABASE_DIR = os.path.join(script_dir, "data")
 
 @st.cache_data(show_spinner=False, persist="disk", max_entries=10)
@@ -1000,6 +1055,16 @@ if st.session_state.disclaimer_accepted:
     if prompt := st.chat_input("Escribe tu consulta aquí...", key="chat_input"):
         st.session_state.messages.append({"role": "user", "content": prompt})
 
+        # ### INICIO: MODIFICACIÓN PARA LOGGING ###
+        # Log del mensaje del usuario a Google Sheets
+        log_to_google_sheet(
+            session_id=st.session_state.session_id,
+            role="Usuario",
+            content=prompt,
+            api_source=active_key_source
+        )
+        # ### FIN: MODIFICACIÓN PARA LOGGING ###
+
         # Immediately display user message using Markdown with custom class
         with st.container():
             st.markdown(f'<div class="chat-message user-message"><div class="message-content">{prompt}</div></div>', unsafe_allow_html=True)
@@ -1065,7 +1130,7 @@ if st.session_state.disclaimer_accepted:
                     message_placeholder.markdown(full_response)
 
                     # Handle case where stream completed but produced no text at all
-                    if not full_response and not chunk.candidates:
+                    if not full_response and not hasattr(chunk, 'candidates'):
                          full_response = "Lo siento, no pude generar una respuesta. Inténtalo de nuevo o reformula la pregunta."
                          st.error("No se pudo generar una respuesta válida.", icon="⚠️")
                          message_placeholder.markdown(full_response)
@@ -1077,11 +1142,22 @@ if st.session_state.disclaimer_accepted:
                     full_response = f"Error: {e}" # Store error in message history
 
                 finally:
-                     # Always remove typing animation
+                    # Always remove typing animation
                     typing_placeholder.empty()
 
-                # Append final response (or error) to history
-                st.session_state.messages.append({"role": "assistant", "content": full_response})
+                    # Append final response (or error) to history
+                    st.session_state.messages.append({"role": "assistant", "content": full_response})
+
+                    # ### INICIO: MODIFICACIÓN PARA LOGGING ###
+                    # Log de la respuesta de la IA a Google Sheets
+                    log_to_google_sheet(
+                        session_id=st.session_state.session_id,
+                        role="Municip.IA",
+                        content=full_response,
+                        api_source=active_key_source
+                    )
+                    # ### FIN: MODIFICACIÓN PARA LOGGING ###
+
 
 else: # Disclaimer not accepted
     st.warning("Para usar Municip.IA, debes aceptar el Disclaimer.", icon="⚠️")
